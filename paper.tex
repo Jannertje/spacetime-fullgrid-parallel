@@ -273,17 +273,18 @@ between machines is necessary.
 The primary objective is therefore to parallellize the application of ${\bf S}$. Still,
 the temporal matrices involved are all \emph{banded} (even tridiagonal for $p_t = 1$),
 because the basis is local, so we do not need to communicate local matvec results
-\emph{globally}, but just to neighbouring machines. I think we want to use \verb`mpi_world.SubComm()` for this.
+\emph{globally}, but just to neighbouring machines. I think we want to use a \verb`MPI_Group` and a custom \verb`MPI_Comm` for this.
 
 On the other hand, for
 consistent PCG steps, we do need to broadcast the results of the inner products
-globally.  This broadcast can be done by \verb`mpi_world.Sum(local_inner)`.
+globally.  This broadcast can be done by \verb`MPI_Comm.Allreduce(MPI.SUM, local_ip)` or something.
 
 Some useful links:
 \begin{itemize}
   \item \url{https://www.youtube.com/watch?v=I0Zupm6GRLs}
-  \item \url{https://github.com/NGSolve/netgen/blob/master/libsrc/core/mpi_wrapper.hpp}
-  \item \url{https://github.com/NGSolve/netgen/blob/master/libsrc/meshing/python_mesh.cpp#L135}
+  \item \url{https://chen.pw/research/computing/mpi4py.html}
+  \item \url{https://mpitutorial.com/tutorials/introduction-to-groups-and-communicators/}
+  \item \url{https://github.com/NGSolve/netgen/commit/2290d9fe7267b1695c28ba286f88a7bb61201e6f}
 \end{itemize}
 
 Lets call a processor $P_n^m$ when it is number $1 \leq n \leq N_t$ and $1 \leq m \leq N_x$.
@@ -296,8 +297,7 @@ Lets call a processor $P_n^m$ when it is number $1 \leq n \leq N_t$ and $1 \leq 
       temporal matrices work as intended. Moreover, NGSolve focuses on 2D/3D domains,
       and 1D support is not great.
     \item we do this manually, saying something
-      like\\
-        \verb`mpi_nbrs = mpi_world.SubComm([(n-1) % N, n, (n+1) % N)`. \\
+      like \verb`MPI_Group_incl([(n-1) % N, n, (n+1) % N)])`.
       This allows us to guide what is done more directly but may not be as easy to maintain.
     \end{enumerate}
 \end{enumerate}
