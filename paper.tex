@@ -173,6 +173,10 @@ The right-hand side could be similarly rewritten as
   which could be more efficient to implement.
 \end{remark}
 
+\begin{remark}
+  I think the `new method' may actually be a reformulation of \emph{implicit Euler} as a space-time problem. In any case, the method of Neumuller and Smears is \emph{very} close to the new method. See their paragraph 2. Their matrix ${\bf S}$ is almost equal to ours, the only two differences being that (1) they did not use the partial integration trick from the previous proof to replace their ${\bf K} + {\bf K}^\top$ with our ${\bf \Gamma}_T$, and (2) their discrete solution is discontinuous piecewise constant in time.
+\end{remark}
+
 \subsection*{Wavelets in time}
 We solve this system using a wavelet-in-time, multigrid-in-space preconditioner. To this end, we
 define the wavelet-transform matrix
