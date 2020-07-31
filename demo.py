@@ -134,7 +134,7 @@ for N in [1, 2, 3, 4, 5, 6]:
         vtk = VTKOutput(ma=mesh_space,
                         coefs=[gf_space],
                         names=['u'],
-                        filename='%s_%d_now' % (fn, N),
+                        filename='output/%s_%d_now' % (fn, N),
                         subdivision=order - 1)
         for t in range(mesh_time.nv):
             gf_space.vec.FV().NumPy()[X.space.fd] = u_dekron[t, :]

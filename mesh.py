@@ -27,7 +27,7 @@ def construct_2d_square_mesh(nrefines=1):
 def construct_3d_shaft_mesh(nrefines=0):
     from netgen.meshing import Mesh as NGMesh, meshsize
     ngmesh = NGMesh(dim=3)
-    ngmesh.Load('shaft.vol')
+    ngmesh.Load('input/shaft.vol')
     ngmesh.GenerateVolumeMesh()
     for _ in range(nrefines):
         ngmesh.Refine()
