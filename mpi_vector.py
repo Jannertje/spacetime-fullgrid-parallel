@@ -65,20 +65,3 @@ class VectorTimeMPI:
             self.comm.Recv(bdr[1], source=self.rank + 1)
 
         return bdr
-
-
-comm = MPI.COMM_WORLD
-vec = VectorTimeMPI(comm, 9, 3)
-X_glob = None
-if comm.Get_rank() == 0:
-    X_glob = np.arange(0, vec.N * vec.M) * 1.0
-vec.scatter(X_glob)
-vec.X_loc *= 2
-if comm.Get_rank() == 0:
-    X_glob = np.zeros(vec.N * vec.M) * 1.0
-vec.gather(X_glob)
-if comm.Get_rank() == 0:
-    print(X_glob.reshape(9, 3))
-
-comm.Barrier()
-print(vec.rank, vec.communicate_bdr())
