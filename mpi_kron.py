@@ -4,8 +4,8 @@ from mpi_vector import VectorTimeMPI
 
 
 class IdentityKronMatMPI:
-    def __init__(self, size_time, mat_space):
-        self.N = size_time
+    def __init__(self, dofs_time, mat_space):
+        self.N = dofs_time
         self.M, L = mat_space.shape
         self.mat_space = mat_space
         assert (self.M == L)
@@ -20,9 +20,9 @@ class IdentityKronMatMPI:
 
 
 class TridiagKronIdentityMPI:
-    def __init__(self, mat_time, size_space):
+    def __init__(self, mat_time, dofs_space):
         self.N, K = mat_time.shape
-        self.M = size_space
+        self.M = dofs_space
         self.mat_time = mat_time
         assert (self.N == K)
         # Check that it is indeed bandwidthed
