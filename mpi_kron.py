@@ -72,6 +72,9 @@ class TridiagKronMatMPI:
         self.I_M.matvec_inplace(vec)
         self.T_I.matvec_inplace(vec)
 
+    def as_matrix(self):
+        return np.kron(as_matrix(self.mat_time), as_matrix(self.mat_space))
+
 
 if __name__ == "__main__":
     mat = np.array([[3.5, 13., 28.5, 50.,

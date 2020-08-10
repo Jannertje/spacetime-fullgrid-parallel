@@ -14,28 +14,21 @@ class VectorTimeMPI:
         # Divide the dofs among the proessors.
         block_size = self.N // self.size
         rest_size = self.N % self.size
-        self.dof_distribution = []
-        self.dof2proc = np.zeros(self.N)
+        dof_distribution = []
         counter = 0
+        self.displs = np.empty(self.size)
+        self.counts = np.empty(self.size)
         for p in range(self.size):
-            self.dof_distribution.append([counter, counter + block_size])
+            self.displs[p] = counter * self.M
+            dof_distribution.append([counter, counter + block_size])
             if self.size - p - 1 < rest_size:
-                self.dof_distribution[-1][1] += 1
-            counter = self.dof_distribution[-1][1]
-
-            for t in range(*self.dof_distribution[-1]):
-                self.dof2proc[t] = p
+                dof_distribution[-1][1] += 1
+            counter = dof_distribution[-1][1]
+            self.counts[p] = (dof_distribution[-1][1] -
+                              dof_distribution[-1][0]) * self.M
 
         assert (counter == self.N)
-
-        # Set MPI counts/displs
-        self.counts = [(t_end - t_begin) * self.M
-                       for (t_begin, t_end) in self.dof_distribution]
-        self.displs = np.zeros(self.size)
-        for p in range(1, self.size):
-            self.displs[p] = self.displs[p - 1] + self.counts[p - 1]
-
-        self.t_begin, self.t_end = self.dof_distribution[self.rank]
+        self.t_begin, self.t_end = dof_distribution[self.rank]
 
         # Create a local vector containing the dofs.
         self.X_loc = np.zeros((self.t_end - self.t_begin, self.M),
@@ -65,3 +58,33 @@ class VectorTimeMPI:
             self.comm.Recv(bdr[1], source=self.rank + 1)
 
         return bdr
+
+    def dot(self, vec_other):
+        assert (isinstance(vec_other, VectorTimeMPI))
+        assert (vec_other.X_loc.shape == vec.X_loc.shape)
+        dot_loc = np.dot(self.X_loc.reshape(-1), vec_other.X_loc.reshape(-1))
+        dot_glob = self.comm.allreduce(dot_loc)
+        return dot_glob
+
+
+if __name__ == '__main__':
+    N = 9
+    M = 13
+    comm = MPI.COMM_WORLD
+    vec = VectorTimeMPI(comm, N, M)
+    x_glob = None
+    if vec.rank == 0:
+        x_glob = np.arange(0, N * M) * 1.0
+    vec.scatter(x_glob)
+    norm_vec_sqr = vec.dot(vec)
+    if vec.rank == 0:
+        assert (np.allclose(norm_vec_sqr, np.dot(x_glob, x_glob)))
+
+    x_glob_2 = None
+    vec_2 = VectorTimeMPI(comm, N, M)
+    if vec.rank == 0:
+        x_glob_2 = np.random.rand(N * M)
+    vec_2.scatter(x_glob_2)
+    ip_vec_vec2 = vec.dot(vec_2)
+    if vec.rank == 0:
+        assert (np.allclose(ip_vec_vec2, np.dot(x_glob, x_glob_2)))

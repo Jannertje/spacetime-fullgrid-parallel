@@ -103,8 +103,12 @@ class HeatEquationMPI:
         self.LT_AKM = TridiagKronMatMPI(
             self.L_t.T.tocsr(),
             CompositeLinOp([self.A_x, self.Kinv_x, self.M_x]))
+        self.M_AKA = TridiagKronMatMPI(
+            self.M_t, CompositeLinOp([self.A_x, self.Kinv_x, self.A_x]))
         self.G_M = TridiagKronMatMPI(self.G_t, self.M_x)
-        self.linops = [self.A_MKM, self.L_MKA, self.LT_AKM, self.G_M]
+        self.linops = [
+            self.A_MKM, self.L_MKA, self.LT_AKM, self.M_AKA, self.G_M
+        ]
 
     def matvec_inplace(self, vec):
         X_loc = vec.X_loc.copy()
@@ -114,11 +118,6 @@ class HeatEquationMPI:
             vec.X_loc[:] = X_loc
             linop.matvec_inplace(vec)
             Y_loc += vec.X_loc
-
-            # test
-            tst = np.kron(as_matrix(linop.mat_time), as_matrix(
-                linop.mat_space)) @ X_loc.reshape(-1)
-            assert (np.allclose(tst, vec.X_loc.reshape(-1)))
 
         vec.X_loc[:] = Y_loc
 
@@ -163,13 +162,15 @@ test_linop(N, M, heat_eq_mpi.G_M)
 x_mpi = VectorTimeMPI(comm, N, M)
 x_glob = None
 if rank == 0:
+    np.random.seed(0)
     x_glob = np.random.rand(N * M) * 1.0
     # Compare to demo
-    _, _, _, S, _, _, _, _, _, _, _ = demo(*square(refines))
-    print('x_glob', x_glob)
-    y_glob = S @ x_glob
-    print('y_glob', y_glob)
-    print('x_glob', x_glob)
+    #_, _, _, S, _, _, _, _, _, _, _ = demo(*square(refines))
+    #y_glob = S @ x_glob
+    #print('y_glob', y_glob)
+    S = sum([linop.as_matrix() for linop in heat_eq_mpi.linops])
+    z_glob = S @ x_glob
+    print('z_glob', z_glob)
 
 # And apply it using MPI :-)
 x_mpi.scatter(x_glob)
@@ -178,4 +179,4 @@ heat_eq_mpi.matvec_inplace(x_mpi)
 
 x_mpi.gather(x_glob)
 if rank == 0:
-    assert (np.allclose(x_glob, y_glob))
+    assert (np.allclose(x_glob, z_glob))
