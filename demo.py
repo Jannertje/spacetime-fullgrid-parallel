@@ -30,14 +30,7 @@ def setup_local_communicators(X, Y):
     return mpi_timeslice
 
 
-output = True
-precond = 'multigrid'
-order = 1
-
-for N in [1, 2, 3, 4, 5, 6]:
-    print("Building problem for N = {}".format(N))
-    mesh_space, bc, mesh_time, data, fn = neumuller_smears(nrefines=N)
-
+def demo(mesh_space, bc, mesh_time, data, fn, precond='multigrid', order=1):
     print("Building fespaces")
     X = KronFES(H1(mesh_time, order=order),
                 H1(mesh_space, order=order, dirichlet=bc))
@@ -132,27 +125,40 @@ for N in [1, 2, 3, 4, 5, 6]:
                          sp.eye(GT_bf.space.mat.shape[0]))
     f = CTKinvX @ g_vec + NKinvXid @ g_vec + u0_lf.vec
     print("done.")
+    return X, Y, WT, S, W, C, P, Kinv, f, g_vec, AXY
 
-    def cb(w, residual, k):
-        if k % 10 == 0:
-            v = W @ residual
-            print('.', v.T @ v / (f.T @ f), flush=True)
-        print('.', end='', flush=True)
 
-    print("solving")
-    w = PCG(WT @ S @ W, P, WT @ f, callback=cb)
-    u = W @ w
-    gminBu = g_vec - AXY @ u - C @ u
-    print("done. X-norm error: ", gminBu.T @ (Kinv @ gminBu))
-    if output:
-        print(np.max(u))
-        u_dekron = u.reshape(len(X.time.fd), len(X.space.fd))
-        gf_space = GridFunction(X.space)
-        vtk = VTKOutput(ma=mesh_space,
-                        coefs=[gf_space],
-                        names=['u'],
-                        filename='output/%s_%d_now' % (fn, N),
-                        subdivision=order - 1)
-        for t in range(mesh_time.nv):
-            gf_space.vec.FV().NumPy()[X.space.fd] = u_dekron[t, :]
-            vtk.Do()
+if __name__ == '__main__':
+    output = True
+    precond = 'multigrid'
+    order = 1
+
+    for N in [1, 2, 3, 4, 5, 6]:
+        print("Building problem for N = {}".format(N))
+        mesh_space, bc, mesh_time, data, fn = neumuller_smears(nrefines=N)
+        X, Y, WT, S, W, C, P, Kinv, f, g_vec, AXY = demo(
+            mesh_space, bc, mesh_time, data, fn, precond, order)
+
+        def cb(w, residual, k):
+            if k % 10 == 0:
+                v = W @ residual
+                print('.', v.T @ v / (f.T @ f), flush=True)
+            print('.', end='', flush=True)
+
+        print("solving")
+        w = PCG(WT @ S @ W, P, WT @ f, callback=cb)
+        u = W @ w
+        gminBu = g_vec - AXY @ u - C @ u
+        print("done. X-norm error: ", gminBu.T @ (Kinv @ gminBu))
+        if output:
+            print(np.max(u))
+            u_dekron = u.reshape(len(X.time.fd), len(X.space.fd))
+            gf_space = GridFunction(X.space)
+            vtk = VTKOutput(ma=mesh_space,
+                            coefs=[gf_space],
+                            names=['u'],
+                            filename='output/%s_%d_now' % (fn, N),
+                            subdivision=order - 1)
+            for t in range(mesh_time.nv):
+                gf_space.vec.FV().NumPy()[X.space.fd] = u_dekron[t, :]
+                vtk.Do()
