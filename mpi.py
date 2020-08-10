@@ -110,16 +110,18 @@ class HeatEquationMPI:
             self.A_MKM, self.L_MKA, self.LT_AKM, self.M_AKA, self.G_M
         ]
 
-    def matvec_inplace(self, vec):
-        X_loc = vec.X_loc.copy()
-        Y_loc = np.zeros(vec.X_loc.shape)
+    def matvec(self, vec_in, vec_out=None):
+        assert (vec_in is not vec_out)
+        if vec_out is None:
+            vec_out = VectorTimeMPI(vec_in.comm, vec_in.N, vec_in.M)
+        Y_loc = np.zeros(vec_out.X_loc.shape)
 
         for linop in self.linops:
-            vec.X_loc[:] = X_loc
-            linop.matvec_inplace(vec)
-            Y_loc += vec.X_loc
+            linop.matvec(vec_in, vec_out)
+            Y_loc += vec_out.X_loc
 
-        vec.X_loc[:] = Y_loc
+        vec_out.X_loc[:] = Y_loc
+        return vec_out
 
 
 def test_linop(N, M, linop):
@@ -134,7 +136,7 @@ def test_linop(N, M, linop):
     x_mpi.scatter(x_glob)
 
     # Apply the vector using MPI
-    linop.matvec_inplace(x_mpi)
+    linop.matvec(x_mpi, x_mpi)
 
     # Check that it is corret.
     x_mpi.gather(x_glob)
@@ -175,8 +177,8 @@ if rank == 0:
 # And apply it using MPI :-)
 x_mpi.scatter(x_glob)
 
-heat_eq_mpi.matvec_inplace(x_mpi)
+y_mpi = heat_eq_mpi.matvec(x_mpi)
 
-x_mpi.gather(x_glob)
+y_mpi.gather(x_glob)
 if rank == 0:
     assert (np.allclose(x_glob, z_glob))
