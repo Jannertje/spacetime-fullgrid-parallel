@@ -1,24 +1,41 @@
-from ngsolve import *
+import time
+
+import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg
-import numpy as np
-import time
-import mpi
-from linop import *
-from lanczos import *
-from mesh import *
-from fespace import *
+from ngsolve import *
+
 from bilform import *
-from linform import *
+from fespace import *
+from lanczos import *
 from linalg import *
+from linform import *
+from linop import *
+from mesh import *
 from problem import *
+
+
+# Parallel-in-time only
+def setup_local_communicators(X, Y):
+    assert X.time.globalorder == 1 and Y.time.globalorder >= 1
+    assert X.time.mesh.ne % mpi_world.size == 0
+    assert mpi_world.size > 1
+
+    n = mpi_world.rank
+    N = mpi_world.size
+    slice_size = int(X.time.mesh.ne / N)
+    print("hier", n, N)
+    mpi_timeslice = mpi_world.SubComm([(n - 1) % N, n, (n + 1) % N])
+    print("daar")
+    return mpi_timeslice
+
 
 output = True
 precond = 'multigrid'
 order = 1
 
 for N in [1, 2, 3, 4, 5, 6]:
-    print("Building problem")
+    print("Building problem for N = {}".format(N))
     mesh_space, bc, mesh_time, data, fn = neumuller_smears(nrefines=N)
 
     print("Building fespaces")
@@ -27,7 +44,7 @@ for N in [1, 2, 3, 4, 5, 6]:
     Y = KronFES(L2(mesh_time, order=order), X.space)
 
     if mpi_world.size > 1:
-        mpi_timeslice = mpi.setup_local_communicators(X, Y)
+        mpi_timeslice = setup_local_communicators(X, Y)
 
     dt = dx
     print("Building bilforms")
