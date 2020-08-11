@@ -3,6 +3,7 @@ import scipy.sparse as sp
 from ngsolve import BilinearForm, Preconditioner
 
 from linop import *
+from wavelets import WaveletTransformMat
 
 
 class BilForm:
@@ -51,27 +52,7 @@ class KronBF:
 def WaveletTransform(fes):
     J = int(np.log(fes.time.mesh.ne) / np.log(2))
 
-    def p(j):
-        mat = sp.lil_matrix((2**(j - 1) + 1, 2**j + 1))
-        mat[:, 0::2] = sp.eye(2**(j - 1) + 1)
-        mat[:, 1::2] = sp.diags([0.5, 0.5], [0, -1],
-                                shape=(2**(j - 1) + 1, 2**(j - 1)))
-        return mat.T
-
-    def q(j):
-        if j == 0: return sp.eye(2)
-        mat = sp.lil_matrix((2**(j - 1), 2**j + 1))
-        mat[:, 0::2] = sp.diags([-0.5, -0.5], [0, 1],
-                                shape=(2**(j - 1), 2**(j - 1) + 1))
-        mat[:, 1::2] = sp.eye(2**(j - 1))
-        mat[0, 0] = -1
-        mat[-1, -1] = -1
-        mat *= 2**(j / 2)
-        return mat.T
-
-    T = q(0)
-    for j in range(1, J + 1):
-        T = sp.bmat([[q(j), p(j) @ T]])
+    T = WaveletTransformMat(J)
     if fes.time.globalorder > 1:
         T = sp.block_diag([T, sp.eye(len(fes.time.fd) - fes.time.mesh.nv)
                            ]).tocsr()
