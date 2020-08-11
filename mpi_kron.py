@@ -23,6 +23,15 @@ class LinearOperatorMPI:
         return self.matvec(x, y)
 
 
+class IdentityMPI(LinearOperatorMPI):
+    def __init__(self, dofs_time, dofs_space):
+        super().__init__(dofs_time, dofs_space)
+
+    def matvec(self, vec_in, vec_out):
+        vec_out.X_loc[:] = vec_in.X_loc
+        return vec_out
+
+
 class IdentityKronMatMPI(LinearOperatorMPI):
     def __init__(self, dofs_time, mat_space):
         M, L = mat_space.shape

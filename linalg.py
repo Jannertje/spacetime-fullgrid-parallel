@@ -9,7 +9,7 @@ def PCG(T, P, b, w0=None, kmax=100000, rtol=1e-5, callback=None):
 
     if w0 is None:
         if isinstance(b, VectorTimeMPI):
-            w0 = VectorTimeMPI(b.comm, b.dofs_time, b.dofs_space)
+            w0 = VectorTimeMPI(b.comm, b.N, b.M)
         else:
             w0 = np.zeros(b.shape)
 
@@ -17,6 +17,7 @@ def PCG(T, P, b, w0=None, kmax=100000, rtol=1e-5, callback=None):
     if sq_rhs_norm == 0: return w0
 
     threshold = rtol * rtol * sq_rhs_norm
+
     r = b - T @ w0
     if inner(r, r) < threshold: return w0
 

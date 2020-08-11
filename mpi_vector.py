@@ -34,6 +34,29 @@ class VectorTimeMPI:
         self.X_loc = np.zeros((self.t_end - self.t_begin, self.M),
                               dtype=np.float64)
 
+    def __iadd__(self, other):
+        self.X_loc += other.X_loc
+        return self
+
+    def __add__(self, other):
+        vec_out = VectorTimeMPI(self.comm, self.N, self.M)
+        vec_out.X_loc = self.X_loc + other.X_loc
+        return vec_out
+
+    def __isub__(self, other):
+        self.X_loc -= other.X_loc
+        return self
+
+    def __sub__(self, other):
+        vec_out = VectorTimeMPI(self.comm, self.N, self.M)
+        vec_out.X_loc = self.X_loc - other.X_loc
+        return vec_out
+
+    def __rmul__(self, other):
+        vec_out = VectorTimeMPI(self.comm, self.N, self.M)
+        vec_out.X_loc = other * self.X_loc
+        return vec_out
+
     def scatter(self, X_glob):
         data = [None, None, None, MPI.DOUBLE]
         if self.rank == 0:

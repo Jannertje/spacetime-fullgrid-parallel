@@ -1,9 +1,11 @@
 import numpy as np
+import scipy.sparse
 from mpi4py import MPI
 
 from demo import demo
+from linalg import PCG
 from mpi_heateq import HeatEquationMPI
-from mpi_kron import as_matrix
+from mpi_kron import IdentityMPI, as_matrix
 from mpi_vector import VectorTimeMPI
 from problem import square
 
@@ -71,3 +73,40 @@ def test_S_apply():
     if rank == 0:
         assert (np.allclose(x_glob, y_glob))
         assert (np.allclose(x_glob, z_glob))
+
+
+def test_solve():
+    refines = 2
+    heat_eq_mpi = HeatEquationMPI(refines)
+    N = heat_eq_mpi.N
+    M = heat_eq_mpi.M
+
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+
+    # Calculate the rhs on root.
+    f_mpi = VectorTimeMPI(comm, N, M)
+    f_glob = None
+    u_glob_mpi = None
+    if rank == 0:
+        u_glob_mpi = np.empty(N * M)
+
+        # Extract f_glob from demo.
+        _, _, _, S, _, _, _, _, f_glob, _, _ = demo(*square(refines))
+
+        # Solve on root.
+        u_glob_demo = PCG(S, scipy.sparse.identity(N * M), f_glob)
+
+    # Solve using mpi.
+    f_mpi.scatter(f_glob)
+
+    def cb(w, residual, k):
+        if rank == 0:
+            print('.', end='', flush=True)
+
+    u_mpi = PCG(heat_eq_mpi, IdentityMPI(N, M), f_mpi, callback=cb)
+
+    # Gather the results on root.
+    u_mpi.gather(u_glob_mpi)
+    if rank == 0:
+        assert (np.allclose(u_glob_demo, u_glob_mpi))
