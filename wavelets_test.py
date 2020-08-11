@@ -1,3 +1,5 @@
+from math import sqrt
+
 import numpy as np
 
 from mpi_kron import as_matrix
@@ -16,9 +18,21 @@ def test_wavelet_transform_works():
     J = 4
     WOp = WaveletTransformOp(J)
 
-    # Check that wavelettransform is identity for wavelets on the toplevel.
     I = np.eye(2**J + 1)
-    N_coarse = 2**(J - 1) + 1
-    for n, wavelet in enumerate(WOp.qT[J]):
-        y = WOp @ as_matrix(wavelet).reshape(-1)
-        assert (np.allclose(y, I[:, N_coarse + n]))
+
+    # Wavelets level 0.
+    assert (np.allclose(WOp @ I[:, 0], np.linspace(1, 0, 2**J + 1)))
+    assert (np.allclose(WOp @ I[:, 1], np.linspace(0, 1, 2**J + 1)))
+
+    # Wavelet of level 1.
+    y = WOp @ I[:, 2]
+    assert (np.allclose(y[:2**(J - 1) + 1],
+                        np.linspace(-sqrt(2), sqrt(2), 2**(J - 1) + 1)))
+    assert (np.allclose(y[2**(J - 1):],
+                        np.linspace(sqrt(2), -sqrt(2), 2**(J - 1) + 1)))
+
+    # Wavelet of level 2.
+    y = WOp @ I[:, 3]
+    assert (np.allclose(y[0], -2))
+    y = WOp @ I[:, 4]
+    assert (np.allclose(y[-1], -2))

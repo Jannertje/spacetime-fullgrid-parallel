@@ -65,8 +65,6 @@ class WaveletTransformOp(sp.linalg.LinearOperator):
         y = x.copy()
         for j in range(1, self.J + 1):
             N_coarse = 2**(j - 1) + 1
-            if j == 1:
-                N_coarse = 2
             N_fine = 2**j + 1
             y[:N_fine] = self.p[j] @ y[:N_coarse] + self.q[j] @ y[N_coarse:
                                                                   N_fine]
@@ -76,8 +74,6 @@ class WaveletTransformOp(sp.linalg.LinearOperator):
         y = x.copy()
         for j in reversed(range(1, self.J + 1)):
             N_coarse = 2**(j - 1) + 1
-            if j == 1:
-                N_coarse = 2
             N_fine = 2**j + 1
             y[:N_coarse], y[N_coarse:N_fine] = self.pT[
                 j] @ y[:N_fine], self.qT[j] @ y[:N_fine]
