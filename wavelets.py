@@ -3,6 +3,8 @@ import scipy.sparse as sp
 import scipy.sparse.linalg
 from scipy import sparse as sp
 
+from mpi_kron import as_matrix
+
 
 def WaveletTransformMat(J):
     def p(j):
@@ -81,3 +83,14 @@ class WaveletTransformOp(sp.linalg.LinearOperator):
                 j] @ y[:N_fine], self.qT[j] @ y[:N_fine]
 
         return y
+
+
+J = 4
+WOp = WaveletTransformOp(J)
+
+# Check that wavelettransform is identity for wavelets on the toplevel.
+for n, wavelet in enumerate(WOp.qT[J]):
+    print(2**J + 1)
+    print(n)
+    print(as_matrix(wavelet).reshape(-1))
+    print(WOp @ as_matrix(wavelet).reshape(-1).T)
