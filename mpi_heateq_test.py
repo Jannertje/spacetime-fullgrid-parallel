@@ -84,29 +84,31 @@ def test_solve():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
 
-    # Calculate the rhs on root.
-    f_mpi = VectorTimeMPI(comm, N, M)
-    f_glob = None
+    # Solve using demo on root.
     u_glob_mpi = None
+    f_glob_mpi = None
     if rank == 0:
         u_glob_mpi = np.empty(N * M)
+        f_glob_mpi = np.empty(N * M)
 
         # Extract f_glob from demo.
-        _, _, _, S, _, _, _, _, f_glob, _, _ = demo(*square(refines))
+        _, _, _, S, _, _, _, _, f_glob_demo, _, _ = demo(*square(refines))
 
         # Solve on root.
-        u_glob_demo = PCG(S, scipy.sparse.identity(N * M), f_glob)
+        u_glob_demo = PCG(S, scipy.sparse.identity(N * M), f_glob_demo)
 
     # Solve using mpi.
-    f_mpi.scatter(f_glob)
-
     def cb(w, residual, k):
         if rank == 0:
             print('.', end='', flush=True)
 
-    u_mpi = PCG(heat_eq_mpi, IdentityMPI(N, M), f_mpi, callback=cb)
+    u_mpi = PCG(heat_eq_mpi, IdentityMPI(N, M), heat_eq_mpi.rhs, callback=cb)
 
     # Gather the results on root.
     u_mpi.gather(u_glob_mpi)
+
+    # Compare to demo.
+    heat_eq_mpi.rhs.gather(f_glob_mpi)
     if rank == 0:
+        assert (np.allclose(f_glob_demo, f_glob_mpi))
         assert (np.allclose(u_glob_demo, u_glob_mpi))

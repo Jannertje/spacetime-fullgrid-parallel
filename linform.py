@@ -1,18 +1,26 @@
-from ngsolve import LinearForm
 import numpy as np
+from ngsolve import LinearForm
+
+
+class LinForm:
+    def __init__(self, fes, linform_lambda):
+        self.fes = fes
+        self.lf = LinearForm(fes)
+        self.lf += linform_lambda(self.fes.TestFunction())
+
+    def assemble(self):
+        self.lf.Assemble()
+        self.vec = self.lf.vec.FV().NumPy()[self.fes.fd]
+        return self.vec
 
 
 class KronLF:
     def __init__(self, fes, time_lambda, space_lambda):
-        self.fes = fes
-        self.time = LinearForm(fes.time)
-        self.time += time_lambda(self.fes.time.TestFunction())
-
-        self.space = LinearForm(fes.space)
-        self.space += space_lambda(self.fes.space.TestFunction())
+        self.time = LinForm(fes.time, time_lambda)
+        self.space = LinForm(fes.space, space_lambda)
 
     def assemble(self):
-        self.time.Assemble()
-        self.space.Assemble()
-        self.vec = np.kron(self.time.vec.FV().NumPy()[self.fes.time.fd],
-                           self.space.vec.FV().NumPy()[self.fes.space.fd])
+        self.time.assemble()
+        self.space.assemble()
+        self.vec = np.kron(self.time.vec, self.space.vec)
+        return self.vec

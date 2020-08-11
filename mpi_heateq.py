@@ -12,6 +12,7 @@ from bilform import BilForm, KronBF
 from demo import demo
 from fespace import KronFES
 from linalg import PCG
+from linform import LinForm
 from linop import AsLinearOperator, CompositeLinOp
 from mpi_kron import (IdentityKronMatMPI, IdentityMPI, LinearOperatorMPI,
                       TridiagKronIdentityMPI, TridiagKronMatMPI, as_matrix)
@@ -64,6 +65,15 @@ class HeatEquationMPI(LinearOperatorMPI):
         self.linops = [
             self.A_MKM, self.L_MKA, self.LT_AKM, self.M_AKA, self.G_M
         ]
+
+        # -- RHS --
+        assert (len(data['g']) == 0)
+        self.u0_t = LinForm(X.time, lambda v: v * ds('start')).assemble()
+        self.u0_x = LinForm(X.space, lambda v: data['u0'] * v * dx).assemble()
+
+        self.rhs = VectorTimeMPI(MPI.COMM_WORLD, self.N, self.M)
+        self.rhs.X_loc = np.kron(self.u0_t[self.rhs.t_begin:self.rhs.t_end],
+                                 self.u0_x).reshape(-1, self.M)
 
     def matvec(self, vec_in, vec_out):
         assert (vec_in is not vec_out)
