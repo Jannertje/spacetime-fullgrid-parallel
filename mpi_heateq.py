@@ -16,7 +16,7 @@ from linform import LinForm
 from linop import AsLinearOperator, CompositeLinOp
 from mpi_kron import (IdentityKronMatMPI, IdentityMPI, LinearOperatorMPI,
                       TridiagKronIdentityMPI, TridiagKronMatMPI, as_matrix)
-from mpi_vector import VectorTimeMPI
+from mpi_vector import KronVectorMPI
 from problem import cube, square
 
 
@@ -71,7 +71,7 @@ class HeatEquationMPI(LinearOperatorMPI):
         self.u0_t = LinForm(X.time, lambda v: v * ds('start')).assemble()
         self.u0_x = LinForm(X.space, lambda v: data['u0'] * v * dx).assemble()
 
-        self.rhs = VectorTimeMPI(MPI.COMM_WORLD, self.N, self.M)
+        self.rhs = KronVectorMPI(MPI.COMM_WORLD, self.N, self.M)
         self.rhs.X_loc = np.kron(self.u0_t[self.rhs.t_begin:self.rhs.t_end],
                                  self.u0_x).reshape(-1, self.M)
 

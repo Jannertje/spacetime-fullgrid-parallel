@@ -1,6 +1,6 @@
 import numpy as np
 
-from mpi_vector import VectorTimeMPI
+from mpi_vector import KronVectorMPI
 
 
 def PCG(T, P, b, w0=None, kmax=100000, rtol=1e-5, callback=None):
@@ -8,8 +8,8 @@ def PCG(T, P, b, w0=None, kmax=100000, rtol=1e-5, callback=None):
         return x.dot(y)
 
     if w0 is None:
-        if isinstance(b, VectorTimeMPI):
-            w0 = VectorTimeMPI(b.comm, b.N, b.M)
+        if isinstance(b, KronVectorMPI):
+            w0 = KronVectorMPI(b.comm, b.N, b.M)
         else:
             w0 = np.zeros(b.shape)
 

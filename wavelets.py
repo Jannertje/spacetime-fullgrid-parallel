@@ -61,7 +61,7 @@ class WaveletTransformOp(sp.linalg.LinearOperator):
         mat *= 2**(j / 2)
         return mat.T.tocsr()
 
-    def _matvec(self, x):
+    def _matmat(self, x):
         y = x.copy()
         for j in range(1, self.J + 1):
             N_coarse = 2**(j - 1) + 1

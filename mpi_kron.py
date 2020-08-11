@@ -2,7 +2,7 @@ import numpy as np
 import scipy.sparse
 from mpi4py import MPI
 
-from mpi_vector import VectorTimeMPI
+from mpi_vector import KronVectorMPI
 
 
 def as_matrix(operator):
@@ -18,8 +18,8 @@ class LinearOperatorMPI:
         self.M = dofs_space
 
     def __matmul__(self, x):
-        assert isinstance(x, VectorTimeMPI)
-        y = VectorTimeMPI(x.comm, x.N, x.M)
+        assert isinstance(x, KronVectorMPI)
+        y = KronVectorMPI(x.comm, x.N, x.M)
         return self.matvec(x, y)
 
 
@@ -40,13 +40,37 @@ class IdentityKronMatMPI(LinearOperatorMPI):
         super().__init__(dofs_time, M)
 
     def matvec(self, vec_in, vec_out):
-        assert (isinstance(vec_in, VectorTimeMPI))
+        assert (isinstance(vec_in, KronVectorMPI))
         assert (self.N == vec_in.N and self.M == vec_in.M)
         assert (vec_in.X_loc.shape == vec_out.X_loc.shape)
 
         # Apply the local kron.
-        vec_out.X_loc = (self.mat_space @ vec_in.X_loc.reshape(
-            vec_in.t_end - vec_in.t_begin, vec_in.M).T).T.copy()
+        vec_out.X_loc[:] = (self.mat_space @ vec_in.X_loc.T).T
+        return vec_out
+
+
+class MatKronIdentityMPI(LinearOperatorMPI):
+    def __init__(self, mat_time, dofs_space):
+        N, K = mat_time.shape
+        M = dofs_space
+        assert (N == K)
+        self.mat_time = mat_time
+        super().__init__(N, M)
+
+    def matvec(self, vec_in, vec_out):
+        assert (isinstance(vec_in, KronVectorMPI))
+        assert (self.N == vec_in.N and self.M == vec_in.M)
+        assert (vec_in.X_loc.shape == vec_out.X_loc.shape)
+
+        # First permute the vector.
+        vec_in_permuted = vec_in.permute()
+
+        # Apply the local kron.
+        vec_in_permuted.X_loc[:] = (self.mat_time @ vec_in_permuted.X_loc.T).T
+
+        # Permute the vector back.
+        vec_in_permuted.permute(vec_out)
+
         return vec_out
 
 
@@ -65,7 +89,7 @@ class TridiagKronIdentityMPI(LinearOperatorMPI):
         super().__init__(N, M)
 
     def matvec(self, vec_in, vec_out):
-        assert (isinstance(vec_in, VectorTimeMPI))
+        assert (isinstance(vec_in, KronVectorMPI))
         assert (self.N == vec_in.N and self.M == vec_in.M)
         assert (vec_in.X_loc.shape == vec_out.X_loc.shape)
 

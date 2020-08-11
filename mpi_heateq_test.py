@@ -6,7 +6,7 @@ from demo import demo
 from linalg import PCG
 from mpi_heateq import HeatEquationMPI
 from mpi_kron import IdentityMPI, as_matrix
-from mpi_vector import VectorTimeMPI
+from mpi_vector import KronVectorMPI
 from problem import square
 
 refines = 2
@@ -16,7 +16,7 @@ def test_bilforms():
     def test_linop(N, M, linop):
         comm = MPI.COMM_WORLD
         # Create some global vector on root.
-        x_mpi = VectorTimeMPI(comm, N, M)
+        x_mpi = KronVectorMPI(comm, N, M)
         x_glob = None
         if comm.Get_rank() == 0:
             x_glob = np.random.rand(N * M) * 1.0
@@ -52,7 +52,7 @@ def test_S_apply():
     rank = comm.Get_rank()
 
     # Create some global vector on root.
-    x_mpi = VectorTimeMPI(comm, N, M)
+    x_mpi = KronVectorMPI(comm, N, M)
     x_glob = None
     if rank == 0:
         np.random.seed(0)
