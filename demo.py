@@ -36,8 +36,8 @@ def demo(mesh_space, bc, mesh_time, data, fn, precond='multigrid', order=1):
                 H1(mesh_space, order=order, dirichlet=bc))
     Y = KronFES(L2(mesh_time, order=order), X.space)
 
-    if mpi_world.size > 1:
-        mpi_timeslice = setup_local_communicators(X, Y)
+    #if mpi_world.size > 1:
+    #    mpi_timeslice = setup_local_communicators(X, Y)
 
     dt = dx
     print("Building bilforms")

@@ -1,15 +1,20 @@
 import numpy as np
 
+from mpi_vector import VectorTimeMPI
+
 
 def PCG(T, P, b, w0=None, kmax=100000, rtol=1e-5, callback=None):
     def inner(x, y):
-        return x.T @ y
-
-    sq_rhs_norm = inner(b, b)
-    if sq_rhs_norm == 0: return np.zeros(b.shape)
+        return x.dot(y)
 
     if w0 is None:
-        w0 = np.zeros(b.shape)
+        if isinstance(b, VectorTimeMPI):
+            w0 = VectorTimeMPI(b.comm, b.dofs_time, b.dofs_space)
+        else:
+            w0 = np.zeros(b.shape)
+
+    sq_rhs_norm = inner(b, b)
+    if sq_rhs_norm == 0: return w0
 
     threshold = rtol * rtol * sq_rhs_norm
     r = b - T @ w0

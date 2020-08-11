@@ -61,30 +61,7 @@ class VectorTimeMPI:
 
     def dot(self, vec_other):
         assert (isinstance(vec_other, VectorTimeMPI))
-        assert (vec_other.X_loc.shape == vec.X_loc.shape)
+        assert (vec_other.X_loc.shape == self.X_loc.shape)
         dot_loc = np.dot(self.X_loc.reshape(-1), vec_other.X_loc.reshape(-1))
         dot_glob = self.comm.allreduce(dot_loc)
         return dot_glob
-
-
-if __name__ == '__main__':
-    N = 9
-    M = 13
-    comm = MPI.COMM_WORLD
-    vec = VectorTimeMPI(comm, N, M)
-    x_glob = None
-    if vec.rank == 0:
-        x_glob = np.arange(0, N * M) * 1.0
-    vec.scatter(x_glob)
-    norm_vec_sqr = vec.dot(vec)
-    if vec.rank == 0:
-        assert (np.allclose(norm_vec_sqr, np.dot(x_glob, x_glob)))
-
-    x_glob_2 = None
-    vec_2 = VectorTimeMPI(comm, N, M)
-    if vec.rank == 0:
-        x_glob_2 = np.random.rand(N * M)
-    vec_2.scatter(x_glob_2)
-    ip_vec_vec2 = vec.dot(vec_2)
-    if vec.rank == 0:
-        assert (np.allclose(ip_vec_vec2, np.dot(x_glob, x_glob_2)))
