@@ -52,7 +52,7 @@ def WaveletTransform(fes):
     J = int(np.log(fes.time.mesh.ne) / np.log(2))
 
     def p(j):
-        mat = sp.csr_matrix((2**(j - 1) + 1, 2**j + 1))
+        mat = sp.lil_matrix((2**(j - 1) + 1, 2**j + 1))
         mat[:, 0::2] = sp.eye(2**(j - 1) + 1)
         mat[:, 1::2] = sp.diags([0.5, 0.5], [0, -1],
                                 shape=(2**(j - 1) + 1, 2**(j - 1)))
@@ -60,7 +60,7 @@ def WaveletTransform(fes):
 
     def q(j):
         if j == 0: return sp.eye(2)
-        mat = sp.csr_matrix((2**(j - 1), 2**j + 1))
+        mat = sp.lil_matrix((2**(j - 1), 2**j + 1))
         mat[:, 0::2] = sp.diags([-0.5, -0.5], [0, 1],
                                 shape=(2**(j - 1), 2**(j - 1) + 1))
         mat[:, 1::2] = sp.eye(2**(j - 1))
@@ -73,7 +73,8 @@ def WaveletTransform(fes):
     for j in range(1, J + 1):
         T = sp.bmat([[q(j), p(j) @ T]])
     if fes.time.globalorder > 1:
-        T = sp.block_diag([T, sp.eye(len(fes.time.fd) - fes.time.mesh.nv)])
+        T = sp.block_diag([T, sp.eye(len(fes.time.fd) - fes.time.mesh.nv)
+                           ]).tocsr()
 
     return (KronLinOp(T, sp.eye(len(fes.space.fd))),
             KronLinOp(T.T, sp.eye(len(fes.space.fd))))
