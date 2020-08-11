@@ -83,16 +83,3 @@ class WaveletTransformOp(sp.linalg.LinearOperator):
                 j] @ y[:N_fine], self.qT[j] @ y[:N_fine]
 
         return y
-
-
-J = 4
-WMat = WaveletTransformMat(J)
-print(WMat.T @ np.array(range(2**J + 1)))
-asdf
-
-# Check that wavelettransform is identity for wavelets on the toplevel.
-for n, wavelet in enumerate(WOp.qT[J]):
-    print(2**J + 1)
-    print(n)
-    print(as_matrix(wavelet).reshape(-1))
-    print(WOp @ as_matrix(wavelet).reshape(-1))
