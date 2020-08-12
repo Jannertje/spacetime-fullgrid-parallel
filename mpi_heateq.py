@@ -109,25 +109,21 @@ class HeatEquationMPI:
         self.rhs.X_loc = np.kron(self.u0_t[self.rhs.t_begin:self.rhs.t_end],
                                  self.u0_x).reshape(-1, self.M)
 
+    def print_time_per_apply(self):
+        print('W', self.W.time_per_apply())
+        print('S', self.S.time_per_apply())
+        print('WT', self.WT.time_per_apply())
+        print('P', self.P.time_per_apply())
+
 
 if __name__ == "__main__":
     refines = 4
+
+    # Create object.
     heat_eq_mpi = HeatEquationMPI(refines)
-    N = heat_eq_mpi.N
-    M = heat_eq_mpi.M
-    comm = MPI.COMM_WORLD
 
-    # Create random MPI vector.
-    w_mpi = KronVectorMPI(comm, N, M)
-    w_mpi.X_loc = np.random.rand(w_mpi.X_loc.shape[0], M)
-    print(w_mpi.X_loc)
+    # Solve.
+    u_mpi_P = PCG(heat_eq_mpi.WT_S_W, heat_eq_mpi.P, heat_eq_mpi.rhs)
 
-    # Perform Lanczos.
-    lanczos = Lanczos(heat_eq_mpi.WT_S_W, heat_eq_mpi.P, w=w_mpi)
-
-    if w_mpi.rank == 0:
-        print(N * M, lanczos)
-
-        # Compare to demo
-        _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines))
-        #print('cond(P @ WT @ S @ W)', Lanczos(WT @ S @ W, P))
+    if u_mpi_P.rank == 0:
+        heat_eq_mpi.print_time_per_apply()

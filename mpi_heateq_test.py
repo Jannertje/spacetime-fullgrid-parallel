@@ -141,7 +141,7 @@ def test_preconditioner():
 
     # Solve without and with preconditioner.
     u_mpi_I = PCG(heat_eq_mpi.S, IdentityMPI(N, M), heat_eq_mpi.rhs)
-    u_mpi_P = PCG(heat_eq_mpi.S, heat_eq_mpi.P, heat_eq_mpi.rhs)
+    u_mpi_P = PCG(heat_eq_mpi.WT_S_W, heat_eq_mpi.P, heat_eq_mpi.rhs)
     assert np.all(np.abs(u_mpi_I.X_loc - u_mpi_P.X_loc) <= 1e-5)
 
     if w_mpi.rank == 0:

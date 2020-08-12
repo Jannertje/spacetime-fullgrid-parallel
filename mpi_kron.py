@@ -29,6 +29,10 @@ class LinearOperatorMPI:
         self.time_applies += MPI.Wtime() - start_time
         return y
 
+    def time_per_apply(self):
+        assert (self.time_applies)
+        return self.time_applies / self.num_applies
+
     def as_global_matrix(self):
         print('Expensive computation!')
         I = np.eye(self.N * self.M)
