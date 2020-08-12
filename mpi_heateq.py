@@ -114,10 +114,10 @@ class HeatEquationMPI:
         self.setup_time = MPI.Wtime() - start_time
 
     def print_time_per_apply(self):
-        print('W', self.W.time_per_apply())
-        print('S', self.S.time_per_apply())
-        print('WT', self.WT.time_per_apply())
-        print('P', self.P.time_per_apply())
+        print('W: ', self.W.time_per_apply())
+        print('S: ', self.S.time_per_apply())
+        print('WT:', self.WT.time_per_apply())
+        print('P: ', self.P.time_per_apply())
 
 
 if __name__ == "__main__":
@@ -127,7 +127,8 @@ if __name__ == "__main__":
         heat_eq_mpi = HeatEquationMPI(refines)
         if rank:
             print('\n\nCreating mesh with {} refines.'.format(refines))
-            print('Constructed bilinear forms in {} s'.format(
+            print('N = {}. M = {}.'.format(heat_eq_mpi.N, heat_eq_mpi.M))
+            print('Constructed bilinear forms in {} s.'.format(
                 heat_eq_mpi.setup_time))
 
         # Solve.
