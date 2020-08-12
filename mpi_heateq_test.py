@@ -117,15 +117,10 @@ def test_solve():
 
 
 def test_demo():
-    refines = 4
+    refines = 3
     heat_eq_mpi = HeatEquationMPI(refines)
-    print(heat_eq_mpi.W.N, heat_eq_mpi.W.M)
-    linearity_test_MPI(heat_eq_mpi.W)
 
     _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines))
-    linop_test_MPI(heat_eq_mpi.W, as_matrix(W))
-    linop_test_MPI(heat_eq_mpi.WT, as_matrix(WT))
-    linop_test_MPI(heat_eq_mpi.S, as_matrix(S))
     linop_test_MPI(heat_eq_mpi.WT_S_W, as_matrix(WT @ S @ W))
     linop_test_MPI(heat_eq_mpi.P, as_matrix(P))
 
@@ -142,11 +137,15 @@ def test_preconditioner():
     w_mpi.X_loc = np.random.rand(w_mpi.X_loc.shape[0], M)
 
     # Perform Lanczos.
-    lanczos = Lanczos(heat_eq_mpi.WT_S_W, heat_eq_mpi.P, w=w_mpi)
+    lanczos_mpi = Lanczos(heat_eq_mpi.WT_S_W, heat_eq_mpi.P, w=w_mpi)
+
+    # Solve without and with preconditioner.
+    u_mpi_I = PCG(heat_eq_mpi.S, IdentityMPI(N, M), heat_eq_mpi.rhs)
+    u_mpi_P = PCG(heat_eq_mpi.S, heat_eq_mpi.P, heat_eq_mpi.rhs)
+    assert np.all(np.abs(u_mpi_I.X_loc - u_mpi_P.X_loc) <= 1e-5)
 
     if w_mpi.rank == 0:
-        print(N * M, lanczos)
-
         # Compare to demo
-        #_, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines))
-        #print('cond(P @ WT @ S @ W)', Lanczos(WT @ S @ W, P))
+        _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines))
+        lanczos_demo = Lanczos(WT @ S @ W, P)
+        assert abs(lanczos_mpi.cond() - lanczos_demo.cond()) < 0.2
