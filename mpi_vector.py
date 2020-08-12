@@ -57,7 +57,7 @@ class KronVectorMPI:
 
     def __rmul__(self, other):
         vec_out = KronVectorMPI(self.comm, self.N, self.M)
-        vec_out.X_loc = other * self.X_loc
+        vec_out.X_loc[:] = other * self.X_loc
         return vec_out
 
     def __truediv__(self, other):
@@ -83,13 +83,13 @@ class KronVectorMPI:
                           [X_glob, self.counts, self.displs, MPI.DOUBLE])
 
     def communicate_bdr(self):
+        reqs = []
         if self.rank > 0:
-            self.comm.Isend(self.X_loc[0, :], self.rank - 1)
+            reqs.append(self.comm.Isend(self.X_loc[0, :], self.rank - 1))
         if self.rank + 1 < self.size:
-            self.comm.Isend(self.X_loc[-1, :], self.rank + 1)
+            reqs.append(self.comm.Isend(self.X_loc[-1, :], self.rank + 1))
 
         bdr = (np.zeros(self.M), np.zeros(self.M))
-        reqs = []
         if self.rank > 0:
             reqs.append(self.comm.Irecv(bdr[0], source=self.rank - 1))
         if self.rank + 1 < self.size:
@@ -112,11 +112,14 @@ class KronVectorMPI:
         else:
             assert (vec_perm.N == self.M and vec_perm.M == self.N)
 
+        # TODO: Do this using scatter.
+
         # Now lets send all the dofs.
         X_loc_T = self.X_loc.T.copy()
+        reqs = []
         for p in range(self.size):
             x_begin, x_end = vec_perm.dof_distribution[p]
-            self.comm.Isend(X_loc_T[x_begin:x_end, :], dest=p)
+            reqs.append(self.comm.Isend(X_loc_T[x_begin:x_end, :], dest=p))
 
         # Receive all the dofs.
         for p in range(self.size):
@@ -125,4 +128,6 @@ class KronVectorMPI:
             buf = np.empty((x_end - x_begin, t_end - t_begin))
             self.comm.Recv(buf, source=p)
             vec_perm.X_loc[:, t_begin:t_end] = buf
+
+        MPI.Request.Waitall(reqs)
         return vec_perm

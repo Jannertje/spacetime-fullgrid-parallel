@@ -16,8 +16,7 @@ def linearity_test_MPI(linop):
     y_mpi = KronVectorMPI(MPI.COMM_WORLD, linop.N, linop.M)
     y_mpi.X_loc = np.random.rand(*y_mpi.X_loc.shape)
 
-    z_mpi = KronVectorMPI(MPI.COMM_WORLD, linop.N, linop.M)
-    z_mpi.X_loc = x_mpi.X_loc + alpha * y_mpi.X_loc
+    z_mpi = x_mpi + alpha * y_mpi
 
     result_1 = linop @ x_mpi + alpha * (linop @ y_mpi)
     result_2 = linop @ z_mpi

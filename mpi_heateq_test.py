@@ -119,6 +119,24 @@ def test_solve():
         assert (np.allclose(u_glob_demo, u_glob_mpi))
 
 
+def linop_test_apply_MPI(linop_mpi, linop):
+    np.random.seed(123123)
+    x_mpi = KronVectorMPI(MPI.COMM_WORLD, linop_mpi.N, linop_mpi.M)
+
+    x_glob = None
+    if x_mpi.rank == 0:
+        x_glob = np.zeros(linop_mpi.N * linop_mpi.M)
+        x_glob[0] = 1
+        y_glob = linop @ x_glob
+
+    x_mpi.scatter(x_glob)
+    x_mpi = linop_mpi @ x_mpi
+    x_mpi.gather(x_glob)
+
+    if x_mpi.rank == 0:
+        assert np.allclose(x_glob, y_glob)
+
+
 def test_demo():
     refines = 3
     heat_eq_mpi = HeatEquationMPI(refines)
@@ -126,6 +144,21 @@ def test_demo():
     _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines))
     linop_test_MPI(heat_eq_mpi.WT_S_W, as_matrix(WT @ S @ W))
     linop_test_MPI(heat_eq_mpi.P, as_matrix(P))
+
+    for refines in range(3, 7):
+        heat_eq_mpi = HeatEquationMPI(refines)
+        linearity_test_MPI(heat_eq_mpi.S)
+        linearity_test_MPI(heat_eq_mpi.W)
+        linearity_test_MPI(heat_eq_mpi.WT)
+        linearity_test_MPI(heat_eq_mpi.WT_S_W)
+        linearity_test_MPI(heat_eq_mpi.P)
+
+        _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines))
+        linop_test_apply_MPI(heat_eq_mpi.S, S)
+        linop_test_apply_MPI(heat_eq_mpi.W, W)
+        linop_test_apply_MPI(heat_eq_mpi.WT, WT)
+        linop_test_apply_MPI(heat_eq_mpi.WT_S_W, WT @ S @ W)
+        linop_test_apply_MPI(heat_eq_mpi.P, P)
 
 
 def test_preconditioner():
