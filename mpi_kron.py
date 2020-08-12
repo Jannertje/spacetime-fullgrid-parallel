@@ -16,11 +16,18 @@ class LinearOperatorMPI:
     def __init__(self, dofs_time, dofs_space):
         self.N = dofs_time
         self.M = dofs_space
+        self.num_applies = 0
+        self.time_applies = 0
 
     def __matmul__(self, x):
         assert isinstance(x, KronVectorMPI)
-        y = KronVectorMPI(x.comm, x.N, x.M)
-        return self.matvec(x, y)
+        start_time = MPI.Wtime()
+
+        y = self._matvec(x, KronVectorMPI(x.comm, x.N, x.M))
+
+        self.num_applies += 1
+        self.time_applies += MPI.Wtime() - start_time
+        return y
 
     def as_global_matrix(self):
         print('Expensive computation!')
@@ -50,7 +57,7 @@ class IdentityMPI(LinearOperatorMPI):
     def __init__(self, dofs_time, dofs_space):
         super().__init__(dofs_time, dofs_space)
 
-    def matvec(self, vec_in, vec_out):
+    def _matvec(self, vec_in, vec_out):
         vec_out.X_loc[:] = vec_in.X_loc
         return vec_out
 
@@ -62,12 +69,12 @@ class SumMPI(LinearOperatorMPI):
         self.linops = linops
         super().__init__(N, M)
 
-    def matvec(self, vec_in, vec_out):
+    def _matvec(self, vec_in, vec_out):
         assert (vec_in is not vec_out)
         Y_loc = np.zeros(vec_out.X_loc.shape)
 
         for linop in self.linops:
-            linop.matvec(vec_in, vec_out)
+            linop._matvec(vec_in, vec_out)
             Y_loc += vec_out.X_loc
 
         vec_out.X_loc = Y_loc
@@ -82,7 +89,7 @@ class CompositeMPI(LinearOperatorMPI):
         self.linops = linops
         super().__init__(N, M)
 
-    def matvec(self, vec_in, vec_out):
+    def _matvec(self, vec_in, vec_out):
         assert (vec_in is not vec_out)
         Y = vec_in
         for linop in reversed(self.linops):
@@ -100,7 +107,7 @@ class BlockDiagMPI(LinearOperatorMPI):
         self.matrices_space = matrices_space
         super().__init__(N, M)
 
-    def matvec(self, vec_in, vec_out):
+    def _matvec(self, vec_in, vec_out):
         assert (isinstance(vec_in, KronVectorMPI))
         assert (self.N == vec_in.N and self.M == vec_in.M)
         assert (vec_in.X_loc.shape == vec_out.X_loc.shape)
@@ -120,7 +127,7 @@ class IdentityKronMatMPI(LinearOperatorMPI):
         self.mat_space = mat_space
         super().__init__(dofs_time, M)
 
-    def matvec(self, vec_in, vec_out):
+    def _matvec(self, vec_in, vec_out):
         assert (isinstance(vec_in, KronVectorMPI))
         assert (self.N == vec_in.N and self.M == vec_in.M)
         assert (vec_in.X_loc.shape == vec_out.X_loc.shape)
@@ -144,7 +151,7 @@ class TridiagKronIdentityMPI(LinearOperatorMPI):
 
         super().__init__(N, M)
 
-    def matvec(self, vec_in, vec_out):
+    def _matvec(self, vec_in, vec_out):
         assert (isinstance(vec_in, KronVectorMPI))
         assert (self.N == vec_in.N and self.M == vec_in.M)
         assert (vec_in.X_loc.shape == vec_out.X_loc.shape)
@@ -175,9 +182,9 @@ class TridiagKronMatMPI(LinearOperatorMPI):
         self.I_M = IdentityKronMatMPI(N, mat_space)
         self.T_I = TridiagKronIdentityMPI(mat_time, M)
 
-    def matvec(self, vec_in, vec_out):
-        self.I_M.matvec(vec_in, vec_out)
-        self.T_I.matvec(vec_out, vec_out)
+    def _matvec(self, vec_in, vec_out):
+        self.I_M._matvec(vec_in, vec_out)
+        self.T_I._matvec(vec_out, vec_out)
         return vec_out
 
     def as_matrix(self):
@@ -186,7 +193,7 @@ class TridiagKronMatMPI(LinearOperatorMPI):
 
 class MatKronIdentityMPI(LinearOperatorMPI):
     """
-    This applies a M \kron I by swapping the rearanging the input vector.
+    This applies a M kron I by swapping the rearanging the input vector.
     NOTE: Expensive in communication!.
     """
     def __init__(self, mat_time, dofs_space):
@@ -196,7 +203,7 @@ class MatKronIdentityMPI(LinearOperatorMPI):
         self.mat_time = mat_time
         super().__init__(N, M)
 
-    def matvec(self, vec_in, vec_out):
+    def _matvec(self, vec_in, vec_out):
         assert (isinstance(vec_in, KronVectorMPI))
         assert (self.N == vec_in.N and self.M == vec_in.M)
         assert (vec_in.X_loc.shape == vec_out.X_loc.shape)

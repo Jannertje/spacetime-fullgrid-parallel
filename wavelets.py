@@ -36,7 +36,7 @@ class WaveletTransformOp(sp.linalg.LinearOperator):
     def __init__(self, J):
         super().__init__(dtype=np.float64, shape=(2**J + 1, 2**J + 1))
         self.J = J
-        self.p, self.q = [sp.eye(0)], [sp.eye(2)]
+        self.p, self.q = [sp.eye(1)], [sp.eye(2)]
         for j in range(J):
             self.p.append(WaveletTransformOp._p(j + 1))
             self.q.append(WaveletTransformOp._q(j + 1))
