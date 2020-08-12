@@ -119,6 +119,7 @@ def test_solve():
 def test_demo():
     refines = 4
     heat_eq_mpi = HeatEquationMPI(refines)
+    print(heat_eq_mpi.W.N, heat_eq_mpi.W.M)
     linearity_test_MPI(heat_eq_mpi.W)
 
     _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines))

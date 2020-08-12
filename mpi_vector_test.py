@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 from mpi4py import MPI
 
@@ -28,18 +30,19 @@ def test_dot():
 
 
 def test_permute():
-    N = 9
-    M = 13
-    comm = MPI.COMM_WORLD
-    vec = KronVectorMPI(comm, N, M)
-    t_glob = None
-    x_glob = None
-    if vec.rank == 0:
-        x_glob = np.empty(N * M, dtype=np.float64)
-        t_glob = np.arange(0, N * M) * 1.0
-    vec.scatter(t_glob)
-    vec_space = vec.permute()
+    for N in range(4, 25):
+        M = 244
+        comm = MPI.COMM_WORLD
+        vec = KronVectorMPI(comm, N, M)
+        t_glob = None
+        x_glob = None
+        if vec.rank == 0:
+            x_glob = np.empty(N * M, dtype=np.float64)
+            t_glob = np.arange(0, N * M) * 1.0
+        vec.scatter(t_glob)
+        vec_space = vec.permute()
+        comm.Barrier()
 
-    vec_space.gather(x_glob)
-    if vec.rank == 0:
-        assert (np.allclose(t_glob.reshape(N, M), x_glob.reshape(M, N).T))
+        vec_space.gather(x_glob)
+        if vec.rank == 0:
+            assert (np.allclose(t_glob.reshape(N, M), x_glob.reshape(M, N).T))

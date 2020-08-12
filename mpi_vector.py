@@ -113,15 +113,16 @@ class KronVectorMPI:
             assert (vec_perm.N == self.M and vec_perm.M == self.N)
 
         # Now lets send all the dofs.
+        X_loc_T = self.X_loc.T.copy()
         for p in range(self.size):
             x_begin, x_end = vec_perm.dof_distribution[p]
-            self.comm.Isend(self.X_loc[:, x_begin:x_end].copy(), dest=p)
+            self.comm.Isend(X_loc_T[x_begin:x_end, :], dest=p)
 
         # Receive all the dofs.
         for p in range(self.size):
             t_begin, t_end = self.dof_distribution[p]
             x_begin, x_end = vec_perm.t_begin, vec_perm.t_end
-            buf = np.empty((t_end - t_begin, x_end - x_begin))
+            buf = np.empty((x_end - x_begin, t_end - t_begin))
             self.comm.Recv(buf, source=p)
-            vec_perm.X_loc[:, t_begin:t_end] = buf.T
+            vec_perm.X_loc[:, t_begin:t_end] = buf
         return vec_perm
