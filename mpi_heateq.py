@@ -121,11 +121,16 @@ class HeatEquationMPI:
 
 
 if __name__ == "__main__":
-    for refines in range(2, 7):
-        rank = MPI.COMM_WORLD.Get_rank()
+    rank = MPI.COMM_WORLD.Get_rank()
+    size = MPI.COMM_WORLD.Get_size()
+    if rank == 0:
+        print('MPI tasks: ', size)
+    for refines in range(5, 10):
+        if size > 2**refines + 1:
+            continue
 
         heat_eq_mpi = HeatEquationMPI(refines)
-        if rank:
+        if rank == 0:
             print('\n\nCreating mesh with {} refines.'.format(refines))
             print('N = {}. M = {}.'.format(heat_eq_mpi.N, heat_eq_mpi.M))
             print('Constructed bilinear forms in {} s.'.format(
