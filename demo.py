@@ -150,10 +150,11 @@ if __name__ == '__main__':
             print('.', end='', flush=True)
 
         print("solving")
-        w = PCG(WT @ S @ W, P, WT @ f, callback=cb)
+        w, iters = PCG(WT @ S @ W, P, WT @ f, callback=cb)
         u = W @ w
         gminBu = g_vec - AXY @ u - C @ u
-        print("done. X-norm error: ", gminBu.T @ (Kinv @ gminBu))
+        print("done in ", iters, " PCG steps. X-norm error: ",
+              gminBu.T @ (Kinv @ gminBu))
         if output:
             print(np.max(u))
             u_dekron = u.reshape(len(X.time.fd), len(X.space.fd))

@@ -26,6 +26,8 @@ from wavelets import WaveletTransformOp
 
 class HeatEquationMPI:
     def __init__(self, refines=2, precond='multigrid', order=1):
+        start_time = MPI.Wtime()
+
         mesh_space, bc_space, mesh_time, data, fn = square(nrefines=refines)
         X = KronFES(H1(mesh_time, order=order),
                     H1(mesh_space, order=order, dirichlet=bc_space))
@@ -109,6 +111,8 @@ class HeatEquationMPI:
         self.rhs.X_loc = np.kron(self.u0_t[self.rhs.t_begin:self.rhs.t_end],
                                  self.u0_x).reshape(-1, self.M)
 
+        self.setup_time = MPI.Wtime() - start_time
+
     def print_time_per_apply(self):
         print('W', self.W.time_per_apply())
         print('S', self.S.time_per_apply())
@@ -117,13 +121,26 @@ class HeatEquationMPI:
 
 
 if __name__ == "__main__":
-    refines = 4
+    for refines in range(2, 7):
+        rank = MPI.COMM_WORLD.Get_rank()
+        print('\n\nCreating mesh with {} refines.'.format(refines))
 
-    # Create object.
-    heat_eq_mpi = HeatEquationMPI(refines)
+        heat_eq_mpi = HeatEquationMPI(refines)
+        if rank:
+            print('Constructed bilinear forms in {} s'.format(
+                heat_eq_mpi.setup_time))
 
-    # Solve.
-    u_mpi_P = PCG(heat_eq_mpi.WT_S_W, heat_eq_mpi.P, heat_eq_mpi.rhs)
+        # Solve.
+        def cb(w, residual, k):
+            if rank == 0:
+                print('.', end='', flush=True)
 
-    if u_mpi_P.rank == 0:
-        heat_eq_mpi.print_time_per_apply()
+        u_mpi_P, iters = PCG(heat_eq_mpi.WT_S_W,
+                             heat_eq_mpi.P,
+                             heat_eq_mpi.rhs,
+                             callback=cb)
+
+        if rank == 0:
+            print('')
+            print('Completed in {} PCG steps'.format(iters))
+            heat_eq_mpi.print_time_per_apply()

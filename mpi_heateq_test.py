@@ -97,14 +97,17 @@ def test_solve():
         _, _, _, S, _, _, _, _, f_glob_demo, _, _ = demo(*square(refines))
 
         # Solve on root.
-        u_glob_demo = PCG(S, scipy.sparse.identity(N * M), f_glob_demo)
+        u_glob_demo, _ = PCG(S, scipy.sparse.identity(N * M), f_glob_demo)
 
     # Solve using mpi.
     def cb(w, residual, k):
         if rank == 0:
             print('.', end='', flush=True)
 
-    u_mpi = PCG(heat_eq_mpi.S, IdentityMPI(N, M), heat_eq_mpi.rhs, callback=cb)
+    u_mpi, _ = PCG(heat_eq_mpi.S,
+                   IdentityMPI(N, M),
+                   heat_eq_mpi.rhs,
+                   callback=cb)
 
     # Gather the results on root.
     u_mpi.gather(u_glob_mpi)
@@ -140,9 +143,9 @@ def test_preconditioner():
     lanczos_mpi = Lanczos(heat_eq_mpi.WT_S_W, heat_eq_mpi.P, w=w_mpi)
 
     # Solve without and with preconditioner.
-    u_mpi_I = PCG(heat_eq_mpi.S, IdentityMPI(N, M), heat_eq_mpi.rhs)
-    u_mpi_P = PCG(heat_eq_mpi.WT_S_W, heat_eq_mpi.P, heat_eq_mpi.rhs)
-    assert np.all(np.abs(u_mpi_I.X_loc - u_mpi_P.X_loc) <= 1e-5)
+    u_mpi_I, iters_I = PCG(heat_eq_mpi.S, IdentityMPI(N, M), heat_eq_mpi.rhs)
+    u_mpi_P, iters_P = PCG(heat_eq_mpi.WT_S_W, heat_eq_mpi.P, heat_eq_mpi.rhs)
+    assert iters_P < iters_I
 
     if w_mpi.rank == 0:
         # Compare to demo
