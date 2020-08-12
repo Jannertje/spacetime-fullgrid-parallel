@@ -1,7 +1,7 @@
-from ngsolve import *
-import scipy.sparse as sp
-from scipy.sparse.linalg import LinearOperator
 import numpy as np
+import scipy.sparse as sp
+from ngsolve import *
+from scipy.sparse.linalg import LinearOperator
 
 
 def KronLinOp(mat_time, mat_space):

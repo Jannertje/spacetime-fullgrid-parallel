@@ -1,7 +1,8 @@
+import time
 from math import sqrt
+
 import numpy as np
 import scipy.sparse as sp
-import time
 
 
 class Lanczos:
@@ -87,8 +88,9 @@ class Lanczos:
         self.alpha = np.zeros(maxIterations)
         self.beta = np.zeros(maxIterations - 1)
         self.converged = True
+        self.dofs = A.shape[0]
 
-        if P == None:
+        if P is None:
             P = sp.identity(A.shape[0])
 
         # Measure start time
@@ -155,8 +157,8 @@ class Lanczos:
     def __str__(self):
 
         convText = "converged"
-        if self.converged == False:
+        if not self.converged:
             convText = "NOT " + convText
-        return '{}\tits={}\tlmax={}\tlmin={}\tkappa={}\ttime={} s'.format(
-            convText, self.iterations, self.lmax, self.lmin, self.cond(),
-            self.time)
+        return '{}\tdofs={}\tits={}\tlmax={}\tlmin={}\tkappa={}\ttime={} s'.format(
+            convText, self.dofs, self.iterations, self.lmax, self.lmin,
+            self.cond(), self.time)

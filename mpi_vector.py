@@ -63,8 +63,7 @@ class KronVectorMPI:
     def dof2proc(self):
         result = np.zeros(self.N)
         for p, (t_begin, t_end) in enumerate(self.dof_distribution):
-            for dof in range(t_begin, t_end):
-                result[dof] = p
+            result[t_begin:t_end] = p
         return result
 
     def scatter(self, X_glob):
@@ -84,12 +83,14 @@ class KronVectorMPI:
         if self.rank + 1 < self.size:
             self.comm.Isend(self.X_loc[-1, :], self.rank + 1)
 
-        bdr = [np.zeros(self.M), np.zeros(self.M)]
+        bdr = (np.zeros(self.M), np.zeros(self.M))
+        reqs = []
         if self.rank > 0:
-            self.comm.Recv(bdr[0], source=self.rank - 1)
+            reqs.append(self.comm.Irecv(bdr[0], source=self.rank - 1))
         if self.rank + 1 < self.size:
-            self.comm.Recv(bdr[1], source=self.rank + 1)
+            reqs.append(self.comm.Irecv(bdr[1], source=self.rank + 1))
 
+        MPI.Request.Waitall(reqs)
         return bdr
 
     def dot(self, vec_other):

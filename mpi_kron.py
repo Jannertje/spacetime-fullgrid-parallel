@@ -32,6 +32,28 @@ class IdentityMPI(LinearOperatorMPI):
         return vec_out
 
 
+class BlockDiagMPI(LinearOperatorMPI):
+    def __init__(self, matrices_space):
+        N = len(matrices_space)
+        M = matrices_space[0].shape[0]
+        for mat in matrices_space:
+            assert mat.shape == (M, M)
+        self.matrices_space = matrices_space
+        super().__init__(N, M)
+
+    def matvec(self, vec_in, vec_out):
+        assert (isinstance(vec_in, KronVectorMPI))
+        assert (self.N == vec_in.N and self.M == vec_in.M)
+        assert (vec_in.X_loc.shape == vec_out.X_loc.shape)
+        assert (vec_out is not vec_in)
+
+        # Apply the operators on the diagonal.
+        for t_loc, linop in enumerate(
+                self.matrices_space[vec_in.t_begin:vec_in.t_end]):
+            vec_out.X_loc[t_loc] = (linop @ vec_in.X_loc[t_loc].T).T
+        return vec_out
+
+
 class IdentityKronMatMPI(LinearOperatorMPI):
     def __init__(self, dofs_time, mat_space):
         M, L = mat_space.shape
@@ -46,31 +68,6 @@ class IdentityKronMatMPI(LinearOperatorMPI):
 
         # Apply the local kron.
         vec_out.X_loc[:] = (self.mat_space @ vec_in.X_loc.T).T
-        return vec_out
-
-
-class MatKronIdentityMPI(LinearOperatorMPI):
-    def __init__(self, mat_time, dofs_space):
-        N, K = mat_time.shape
-        M = dofs_space
-        assert (N == K)
-        self.mat_time = mat_time
-        super().__init__(N, M)
-
-    def matvec(self, vec_in, vec_out):
-        assert (isinstance(vec_in, KronVectorMPI))
-        assert (self.N == vec_in.N and self.M == vec_in.M)
-        assert (vec_in.X_loc.shape == vec_out.X_loc.shape)
-
-        # First permute the vector.
-        vec_in_permuted = vec_in.permute()
-
-        # Apply the local kron.
-        vec_in_permuted.X_loc[:] = (self.mat_time @ vec_in_permuted.X_loc.T).T
-
-        # Permute the vector back.
-        vec_in_permuted.permute(vec_out)
-
         return vec_out
 
 
@@ -126,3 +123,32 @@ class TridiagKronMatMPI(LinearOperatorMPI):
 
     def as_matrix(self):
         return np.kron(as_matrix(self.mat_time), as_matrix(self.mat_space))
+
+
+class MatKronIdentityMPI(LinearOperatorMPI):
+    """
+    This applies a M \kron I by swapping the rearanging the input vector.
+    NOTE: Expensive in communication!.
+    """
+    def __init__(self, mat_time, dofs_space):
+        N, K = mat_time.shape
+        M = dofs_space
+        assert (N == K)
+        self.mat_time = mat_time
+        super().__init__(N, M)
+
+    def matvec(self, vec_in, vec_out):
+        assert (isinstance(vec_in, KronVectorMPI))
+        assert (self.N == vec_in.N and self.M == vec_in.M)
+        assert (vec_in.X_loc.shape == vec_out.X_loc.shape)
+
+        # First permute the vector.
+        vec_in_permuted = vec_in.permute()
+
+        # Apply the local kron.
+        vec_in_permuted.X_loc[:] = (self.mat_time @ vec_in_permuted.X_loc.T).T
+
+        # Permute the vector back.
+        vec_in_permuted.permute(vec_out)
+
+        return vec_out

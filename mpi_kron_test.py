@@ -2,7 +2,7 @@ import numpy as np
 import scipy.sparse
 from mpi4py import MPI
 
-from mpi_kron import (IdentityKronMatMPI, MatKronIdentityMPI,
+from mpi_kron import (BlockDiagMPI, IdentityKronMatMPI, MatKronIdentityMPI,
                       TridiagKronIdentityMPI, as_matrix)
 from mpi_vector import KronVectorMPI
 
@@ -82,6 +82,34 @@ def test_tridiag_kron_mat():
     # Apply the vector using MPI
     T_M = TridiagKronIdentityMPI(stiff_time, M)
     x_mpi = T_M @ x_mpi
+
+    # Check that it is corret.
+    x_mpi.gather(x_glob)
+    if rank == 0:
+        assert (np.allclose(y_glob, x_glob))
+
+
+def test_block_diag():
+    N = 9
+    M = 16
+    matrices_space = []
+    np.random.seed(0)
+    for n in range(N):
+        matrices_space.append(np.random.rand(M, M))
+
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+
+    # Create some global vector on root.
+    x_mpi = KronVectorMPI(comm, N, M)
+    x_glob = None
+    if rank == 0:
+        x_glob = np.random.rand(N * M) * 1.0
+        y_glob = scipy.sparse.block_diag(matrices_space) @ x_glob
+    x_mpi.scatter(x_glob)
+
+    # Apply the vector using MPI
+    x_mpi = BlockDiagMPI(matrices_space) @ x_mpi
 
     # Check that it is corret.
     x_mpi.gather(x_glob)

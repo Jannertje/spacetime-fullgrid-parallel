@@ -133,11 +133,14 @@ if __name__ == '__main__':
     precond = 'multigrid'
     order = 1
 
+    ngsglobals.msg_level = 0
     for N in [1, 2, 3, 4, 5, 6]:
         print("Building problem for N = {}".format(N))
         mesh_space, bc, mesh_time, data, fn = neumuller_smears(nrefines=N)
         X, Y, WT, S, W, C, P, Kinv, f, g_vec, AXY = demo(
             mesh_space, bc, mesh_time, data, fn, precond, order)
+
+        print('cond(P @ WT @ S @ W)', Lanczos(WT @ S @ W, P))
 
         def cb(w, residual, k):
             if k % 10 == 0:
