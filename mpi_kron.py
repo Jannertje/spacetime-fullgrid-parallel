@@ -22,6 +22,29 @@ class LinearOperatorMPI:
         y = KronVectorMPI(x.comm, x.N, x.M)
         return self.matvec(x, y)
 
+    def as_global_matrix(self):
+        print('Expensive computation!')
+        I = np.eye(self.N * self.M)
+        comm = MPI.COMM_WORLD
+        x_mpi = KronVectorMPI(comm, self.N, self.M)
+        result = None
+        x_glob = None
+        if x_mpi.rank == 0:
+            x_glob = np.empty(self.N * self.M)
+            result = np.zeros((self.N * self.M, self.N * self.M))
+
+        for k in range(self.N * self.M):
+            x_mpi.scatter(I[k, :])
+
+            # Apply the operator using MPI.
+            x_mpi = self @ x_mpi
+
+            # Store the results.
+            x_mpi.gather(x_glob)
+            if x_mpi.rank == 0:
+                result[:, k] = x_glob
+        return result
+
 
 class IdentityMPI(LinearOperatorMPI):
     def __init__(self, dofs_time, dofs_space):
@@ -29,6 +52,42 @@ class IdentityMPI(LinearOperatorMPI):
 
     def matvec(self, vec_in, vec_out):
         vec_out.X_loc[:] = vec_in.X_loc
+        return vec_out
+
+
+class SumMPI(LinearOperatorMPI):
+    def __init__(self, linops):
+        assert all(isinstance(linop, LinearOperatorMPI) for linop in linops)
+        N, M = linops[0].N, linops[0].M
+        self.linops = linops
+        super().__init__(N, M)
+
+    def matvec(self, vec_in, vec_out):
+        assert (vec_in is not vec_out)
+        Y_loc = np.zeros(vec_out.X_loc.shape)
+
+        for linop in self.linops:
+            linop.matvec(vec_in, vec_out)
+            Y_loc += vec_out.X_loc
+
+        vec_out.X_loc = Y_loc
+        return vec_out
+
+
+class CompositeMPI(LinearOperatorMPI):
+    def __init__(self, linops):
+        assert all(isinstance(linop, LinearOperatorMPI) for linop in linops)
+        N, M = linops[0].N, linops[0].M
+        assert all(linop.N == N and linop.M == M for linop in linops)
+        self.linops = linops
+        super().__init__(N, M)
+
+    def matvec(self, vec_in, vec_out):
+        assert (vec_in is not vec_out)
+        Y = vec_in
+        for linop in reversed(self.linops):
+            Y = linop @ Y
+        vec_out.X_loc = Y.X_loc
         return vec_out
 
 

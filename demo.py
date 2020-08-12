@@ -14,6 +14,8 @@ from linop import *
 from mesh import *
 from problem import *
 
+ngsglobals.msg_level = 0
+
 
 # Parallel-in-time only
 def setup_local_communicators(X, Y):
@@ -133,7 +135,6 @@ if __name__ == '__main__':
     precond = 'multigrid'
     order = 1
 
-    ngsglobals.msg_level = 0
     for N in [1, 2, 3, 4, 5, 6]:
         print("Building problem for N = {}".format(N))
         mesh_space, bc, mesh_time, data, fn = neumuller_smears(nrefines=N)

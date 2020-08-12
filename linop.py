@@ -30,6 +30,7 @@ def BlockDiagLinOp(linops):
     width = sum(linop.shape[1] for linop in linops)
 
     def matvec(x):
+        x = x.reshape(-1)
         y = np.zeros(height, dtype=x.dtype)
         start = 0
         for linop in linops:

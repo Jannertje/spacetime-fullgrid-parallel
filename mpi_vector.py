@@ -60,6 +60,11 @@ class KronVectorMPI:
         vec_out.X_loc = other * self.X_loc
         return vec_out
 
+    def __truediv__(self, other):
+        vec_out = KronVectorMPI(self.comm, self.N, self.M)
+        vec_out.X_loc = self.X_loc / other
+        return vec_out
+
     def dof2proc(self):
         result = np.zeros(self.N)
         for p, (t_begin, t_end) in enumerate(self.dof_distribution):

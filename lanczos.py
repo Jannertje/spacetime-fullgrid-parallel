@@ -81,6 +81,7 @@ class Lanczos:
     def __init__(self,
                  A,
                  P=None,
+                 w=None,
                  maxIterations=MAXLANCZOS,
                  tol=TOL,
                  tolBisec=TOLBISEC):
@@ -88,7 +89,6 @@ class Lanczos:
         self.alpha = np.zeros(maxIterations)
         self.beta = np.zeros(maxIterations - 1)
         self.converged = True
-        self.dofs = A.shape[0]
 
         if P is None:
             P = sp.identity(A.shape[0])
@@ -97,16 +97,17 @@ class Lanczos:
         start = time.clock()
 
         # Initialize with random vector
-        w = 2.0 * np.random.rand(A.shape[0]) - 1.0
+        if w is None:
+            w = 2.0 * np.random.rand(A.shape[0]) - 1.0
 
-        v = A.dot(w)  # v=Aw
+        v = A @ w  # v=Aw
         norm = sqrt(v.dot(w))
         v = v / norm
         w = w / norm
 
-        v = P.dot(v)
+        v = P @ v
 
-        u = A.dot(v)
+        u = A @ v
         self.alpha[0] = u.dot(w)  # alpha[0] = <v,w>
 
         lmax = lmin = self.alpha[0]
@@ -118,19 +119,19 @@ class Lanczos:
                 break
 
             v -= self.alpha[k] * w  # v=v-alpha_[k]w
-            u = A.dot(v)
+            u = A @ v
             self.beta[k] = sqrt(u.dot(v))  # beta[k]=||v||
 
             temp = w
             w = v / self.beta[k]
             v = -self.beta[k] * temp
 
-            u = A.dot(w)
-            u = P.dot(u)
+            u = A @ w
+            u = P @ u
             v += u
 
             k += 1
-            u = A.dot(v)
+            u = A @ v
             self.alpha[k] = u.dot(w)  # alpha_[++k]=<v,w> */
 
             lmaxold = lmax
@@ -159,6 +160,6 @@ class Lanczos:
         convText = "converged"
         if not self.converged:
             convText = "NOT " + convText
-        return '{}\tdofs={}\tits={}\tlmax={}\tlmin={}\tkappa={}\ttime={} s'.format(
-            convText, self.dofs, self.iterations, self.lmax, self.lmin,
-            self.cond(), self.time)
+        return '{}\tits={}\tlmax={}\tlmin={}\tkappa={}\ttime={} s'.format(
+            convText, self.iterations, self.lmax, self.lmin, self.cond(),
+            self.time)

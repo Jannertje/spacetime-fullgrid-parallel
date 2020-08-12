@@ -3,9 +3,11 @@ import scipy.sparse
 from mpi4py import MPI
 
 from demo import demo
+from lanczos import Lanczos
 from linalg import PCG
 from mpi_heateq import HeatEquationMPI
 from mpi_kron import IdentityMPI, as_matrix
+from mpi_kron_test import linearity_test_MPI, linop_test_MPI
 from mpi_vector import KronVectorMPI
 from problem import square
 
@@ -37,7 +39,7 @@ def test_bilforms():
     heat_eq_mpi = HeatEquationMPI(refines)
     N = heat_eq_mpi.N
     M = heat_eq_mpi.M
-    for linop in heat_eq_mpi.linops:
+    for linop in heat_eq_mpi.S.linops:
         test_linop(N, M, linop)
 
 
@@ -63,12 +65,12 @@ def test_S_apply():
         y_glob = S @ x_glob
 
         # Compare to np.kron
-        S = sum([linop.as_matrix() for linop in heat_eq_mpi.linops])
+        S = sum([linop.as_matrix() for linop in heat_eq_mpi.S.linops])
         z_glob = S @ x_glob
 
     # And apply it using MPI :-)
     x_mpi.scatter(x_glob)
-    y_mpi = heat_eq_mpi @ x_mpi
+    y_mpi = heat_eq_mpi.S @ x_mpi
     y_mpi.gather(x_glob)
     if rank == 0:
         assert (np.allclose(x_glob, y_glob))
@@ -102,7 +104,7 @@ def test_solve():
         if rank == 0:
             print('.', end='', flush=True)
 
-    u_mpi = PCG(heat_eq_mpi, IdentityMPI(N, M), heat_eq_mpi.rhs, callback=cb)
+    u_mpi = PCG(heat_eq_mpi.S, IdentityMPI(N, M), heat_eq_mpi.rhs, callback=cb)
 
     # Gather the results on root.
     u_mpi.gather(u_glob_mpi)
@@ -112,3 +114,38 @@ def test_solve():
     if rank == 0:
         assert (np.allclose(f_glob_demo, f_glob_mpi))
         assert (np.allclose(u_glob_demo, u_glob_mpi))
+
+
+def test_demo():
+    refines = 4
+    heat_eq_mpi = HeatEquationMPI(refines)
+    linearity_test_MPI(heat_eq_mpi.W)
+
+    _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines))
+    linop_test_MPI(heat_eq_mpi.W, as_matrix(W))
+    linop_test_MPI(heat_eq_mpi.WT, as_matrix(WT))
+    linop_test_MPI(heat_eq_mpi.S, as_matrix(S))
+    linop_test_MPI(heat_eq_mpi.WT_S_W, as_matrix(WT @ S @ W))
+    linop_test_MPI(heat_eq_mpi.P, as_matrix(P))
+
+
+def test_preconditioner():
+    refines = 4
+    heat_eq_mpi = HeatEquationMPI(refines)
+    N = heat_eq_mpi.N
+    M = heat_eq_mpi.M
+    comm = MPI.COMM_WORLD
+
+    # Create random MPI vector.
+    w_mpi = KronVectorMPI(comm, N, M)
+    w_mpi.X_loc = np.random.rand(w_mpi.X_loc.shape[0], M)
+
+    # Perform Lanczos.
+    lanczos = Lanczos(heat_eq_mpi.WT_S_W, heat_eq_mpi.P, w=w_mpi)
+
+    if w_mpi.rank == 0:
+        print(N * M, lanczos)
+
+        # Compare to demo
+        #_, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines))
+        #print('cond(P @ WT @ S @ W)', Lanczos(WT @ S @ W, P))

@@ -2,63 +2,56 @@ import numpy as np
 import scipy.sparse
 from mpi4py import MPI
 
-from mpi_kron import (BlockDiagMPI, IdentityKronMatMPI, MatKronIdentityMPI,
-                      TridiagKronIdentityMPI, as_matrix)
+from mpi_kron import (BlockDiagMPI, IdentityKronMatMPI, LinearOperatorMPI,
+                      MatKronIdentityMPI, TridiagKronIdentityMPI, as_matrix)
 from mpi_vector import KronVectorMPI
+
+
+def linearity_test_MPI(linop):
+    assert isinstance(linop, LinearOperatorMPI)
+    alpha = 3.14
+    x_mpi = KronVectorMPI(MPI.COMM_WORLD, linop.N, linop.M)
+    x_mpi.X_loc = np.random.rand(*x_mpi.X_loc.shape)
+
+    y_mpi = KronVectorMPI(MPI.COMM_WORLD, linop.N, linop.M)
+    y_mpi.X_loc = np.random.rand(*y_mpi.X_loc.shape)
+
+    z_mpi = KronVectorMPI(MPI.COMM_WORLD, linop.N, linop.M)
+    z_mpi.X_loc = x_mpi.X_loc + alpha * y_mpi.X_loc
+
+    result_1 = linop @ x_mpi + alpha * (linop @ y_mpi)
+    result_2 = linop @ z_mpi
+
+    if not np.allclose(result_1.X_loc, result_2.X_loc):
+        print('rank', x_mpi.rank)
+        print('result_1', result_1.X_loc.reshape(-1).T)
+        print('result_2', result_2.X_loc.reshape(-1).T)
+    assert (np.allclose(result_1.X_loc.reshape(-1),
+                        result_2.X_loc.reshape(-1)))
+
+
+def linop_test_MPI(linop_mpi, mat_glob):
+    linearity_test_MPI(linop_mpi)
+    rank = MPI.COMM_WORLD.Get_rank()
+    mat_mpi = linop_mpi.as_global_matrix()
+    if rank == 0:
+        assert (np.allclose(mat_mpi, mat_glob))
 
 
 def test_identity_kron_mat():
     N = 13
     M = 16
     mat_space = np.arange(0, M * M).reshape(M, M)
-
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-
-    # Create some global vector on root.
-    x_mpi = KronVectorMPI(comm, N, M)
-    x_glob = None
-    if rank == 0:
-        x_glob = np.random.rand(N * M) * 1.0
-        y_glob = np.kron(np.eye(N), mat_space) @ x_glob
-    x_mpi.scatter(x_glob)
-
-    # Apply the vector using MPI
     I_M = IdentityKronMatMPI(N, mat_space)
-    x_mpi = I_M @ x_mpi
-
-    comm.Barrier()
-    # Check that it is corret.
-    x_mpi.gather(x_glob)
-    if rank == 0:
-        print(x_glob.reshape(N, M))
-        assert (np.allclose(y_glob, x_glob))
+    linop_test_MPI(I_M, np.kron(np.eye(N), mat_space))
 
 
 def test_mat_kron_identity():
     N = 9
     M = 16
     mat_time = np.arange(0, N * N).reshape(N, N)
-
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-
-    # Create some global vector on root.
-    x_mpi = KronVectorMPI(comm, N, M)
-    x_glob = None
-    if rank == 0:
-        x_glob = np.random.rand(N * M) * 1.0
-        y_glob = np.kron(mat_time, np.eye(M)) @ x_glob
-    x_mpi.scatter(x_glob)
-
-    # Apply the vector using MPI
     M_I = MatKronIdentityMPI(mat_time, M)
-    x_mpi = M_I @ x_mpi
-
-    # Check that it is corret.
-    x_mpi.gather(x_glob)
-    if rank == 0:
-        assert (np.allclose(y_glob, x_glob))
+    linop_test_MPI(M_I, np.kron(mat_time, np.eye(M)))
 
 
 def test_tridiag_kron_mat():
@@ -66,27 +59,10 @@ def test_tridiag_kron_mat():
                      77.5], [-5., -23., -53., -95., -149.],
                     [2.5, 11., 25.5, 46., 72.5]])
     stiff_time = scipy.sparse.spdiags(mat, (1, 0, -1), 5, 5).T.copy().tocsr()
-    N = stiff_time.shape[0]
+
     M = 3
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-
-    # Create some global vector on root.
-    x_mpi = KronVectorMPI(comm, N, M)
-    x_glob = None
-    if rank == 0:
-        x_glob = np.random.rand(N * M) * 1.0
-        y_glob = np.kron(as_matrix(stiff_time), as_matrix(np.eye(M))) @ x_glob
-    x_mpi.scatter(x_glob)
-
-    # Apply the vector using MPI
     T_M = TridiagKronIdentityMPI(stiff_time, M)
-    x_mpi = T_M @ x_mpi
-
-    # Check that it is corret.
-    x_mpi.gather(x_glob)
-    if rank == 0:
-        assert (np.allclose(y_glob, x_glob))
+    linop_test_MPI(T_M, np.kron(stiff_time.toarray(), np.eye(M)))
 
 
 def test_block_diag():
@@ -97,21 +73,5 @@ def test_block_diag():
     for n in range(N):
         matrices_space.append(np.random.rand(M, M))
 
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-
-    # Create some global vector on root.
-    x_mpi = KronVectorMPI(comm, N, M)
-    x_glob = None
-    if rank == 0:
-        x_glob = np.random.rand(N * M) * 1.0
-        y_glob = scipy.sparse.block_diag(matrices_space) @ x_glob
-    x_mpi.scatter(x_glob)
-
-    # Apply the vector using MPI
-    x_mpi = BlockDiagMPI(matrices_space) @ x_mpi
-
-    # Check that it is corret.
-    x_mpi.gather(x_glob)
-    if rank == 0:
-        assert (np.allclose(y_glob, x_glob))
+    Blk = BlockDiagMPI(matrices_space)
+    linop_test_MPI(Blk, scipy.sparse.block_diag(matrices_space).toarray())
