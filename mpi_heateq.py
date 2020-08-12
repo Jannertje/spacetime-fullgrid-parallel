@@ -125,7 +125,7 @@ if __name__ == "__main__":
     size = MPI.COMM_WORLD.Get_size()
     if rank == 0:
         print('MPI tasks: ', size)
-    for refines in range(5, 10):
+    for refines in range(2, 10):
         if size > 2**refines + 1:
             continue
 
@@ -141,6 +141,7 @@ if __name__ == "__main__":
             if rank == 0:
                 print('.', end='', flush=True)
 
+        solve_time = MPI.Wtime()
         u_mpi_P, iters = PCG(heat_eq_mpi.WT_S_W,
                              heat_eq_mpi.P,
                              heat_eq_mpi.rhs,
@@ -148,5 +149,6 @@ if __name__ == "__main__":
 
         if rank == 0:
             print('')
-            print('Completed in {} PCG steps'.format(iters))
+            print('Completed in {} PCG steps.'.format(iters))
+            print('Total solve time: {}s.'.format(MPI.Wtime() - solve_time))
             heat_eq_mpi.print_time_per_apply()
