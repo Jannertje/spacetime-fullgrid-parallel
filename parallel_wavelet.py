@@ -3,6 +3,7 @@ import numpy as np
 import scipy.sparse as sp
 from scipy.sparse.linalg.interface import LinearOperator
 
+import wavelets
 from mpi4py import MPI
 
 comm = MPI.COMM_WORLD
@@ -10,67 +11,47 @@ rank = comm.Get_rank()
 size = comm.size
 
 
-class WaveletKronIdentity(LinearOperator):
-    def __init__(self, comm, J, space_size):
-        self.comm = comm
-        self.J = J
-        self.N = 2**self.J + 1
-        self.M = space_size
-        super().__init__(dtype=np.float64,
-                         shape=(self.N * self.M, self.N * self.M))
-        self.T_ = self._q(0)
-        for j in range(1, J + 1):
-            self.T_ = sp.bmat([[self._p(j) @ self.T_, self._q(j)]])
+class LevelWaveletTransformOp(wavelets.WaveletTransformOp):
+    def __init__(self, J):
+        super().__init__(J=J, interleaved=True)
+        self.split = []
+        for j in range(J + 1):
+            self.split.append(
+                LevelWaveletTransformOp._split(J, j, self.p[j], self.q[j]))
+        plt.imshow(
+            np.log10(
+                np.abs(np.hstack([split.toarray()
+                                  for split in self.split[1:]]))))
+        plt.show()
 
-    def _p(self, j):
-        mat = sp.csr_matrix((2**(j - 1) + 1, 2**j + 1))
-        mat[:, 0::2] = sp.eye(2**(j - 1) + 1)
-        mat[:, 1::2] = sp.diags([0.5, 0.5], [0, -1],
-                                shape=(2**(j - 1) + 1, 2**(j - 1)))
-        return mat.T
+    def _split(J, j, p, q):
+        if j == 0: return sp.csr_matrix((2**J + 1, 2**J + 1))
+        I = np.eye(2**J + 1)
+        mat = np.eye(2**J + 1)
+        S = 2**(J - j)
+        mat[::S] = p @ I[::S][::2] + q @ I[::S][1::2]
+        mat -= sp.eye(2**J + 1)
+        return sp.csr_matrix(mat)
 
-    def _q(self, j):
-        if j == 0: return sp.eye(2)
-        mat = sp.csr_matrix((2**(j - 1), 2**j + 1))
-        mat[:, 0::2] = sp.diags([-0.5, -0.5], [0, 1],
-                                shape=(2**(j - 1), 2**(j - 1) + 1))
-        mat[:, 1::2] = sp.eye(2**(j - 1))
-        mat[0, 0] = -1
-        mat[-1, -1] = -1
-        mat *= 2**(j / 2)
-        return mat.T
-
-    def _matvec(self, x):
-        Y = x.reshape(self.N, self.M)
+    def _matmat(self, x):
+        y = x.copy()
         for j in range(1, self.J + 1):
-            interleaved = np.zeros((2**j + 1, 2**j + 1))
-            interleaved[:, ::2] = self._p(j).toarray()
-            interleaved[:, 1::2] = self._q(j).toarray()
-            plt.spy(interleaved)
-            plt.show()
-            stride = 2**(self.J - j)
-            Y[0::2 * stride], Y[1::2 * stride] = self._p(
-                j).T @ Y[::stride], self._q(j).T @ Y[::stride]
-            #old = 2**j + 1
-            #new = 2**(j - 1) + 1
-            #Y[:old] = self._p(j) @ Y[:new] + self._q(j) @ Y[new:old]
-        return Y.reshape(-1)
+            y += self.split[j] @ y
+        return y
 
-    def _rmatvec(self, x):
-        Y = x.reshape(self.N, self.M)
+    def _rmatmat(self, x):
+        y = x.copy()
         for j in reversed(range(1, self.J + 1)):
-            stride = 2**(self.J - j)
-            Y[0::2 * stride], Y[1::2 * stride] = self._p(
-                j).T @ Y[::stride], self._q(j).T @ Y[::stride]
-            #old = 2**j + 1
-            #new = 2**(j - 1) + 1
-            #Y[:new], Y[new:old] = self._p(j).T @ Y[:old], self._q(
-            #    j).T @ Y[:old]
-        return Y.reshape(-1)
+            y += self.splitT[j] @ y
+        return y
 
 
-W = WaveletKronIdentity(comm, J=4, space_size=1)
+J = 5
+W = LevelWaveletTransformOp(J=J)
 #assert np.allclose(W.T_.toarray().T, W.T @ np.eye(2**4 + 1))
-plt.spy(W @ np.eye(2**4 + 1))
+plt.imshow(
+    np.log10(
+        np.abs(W @ np.eye(2**J + 1) - wavelets.WaveletTransformOp(
+            J=J, interleaved=True) @ np.eye(2**J + 1))))
+plt.colorbar()
 plt.show()
-assert np.allclose(W.T_.toarray(), W @ np.eye(2**4 + 1))
