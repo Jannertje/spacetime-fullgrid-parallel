@@ -37,6 +37,7 @@ def demo(mesh_space, bc, mesh_time, data, fn, precond='multigrid', order=1):
     X = KronFES(H1(mesh_time, order=order),
                 H1(mesh_space, order=order, dirichlet=bc))
     Y = KronFES(L2(mesh_time, order=order), X.space)
+    print(help(mesh_space[list(mesh_space.vertices)[0]]))
 
     #if mpi_world.size > 1:
     #    mpi_timeslice = setup_local_communicators(X, Y)

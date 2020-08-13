@@ -33,7 +33,7 @@ def WaveletTransformMat(J):
 
 
 class WaveletTransformOp(sp.linalg.LinearOperator):
-    def __init__(self, J):
+    def __init__(self, J, interleaved=False):
         super().__init__(dtype=np.float64, shape=(2**J + 1, 2**J + 1))
         self.J = J
         self.p, self.q = [sp.eye(0)], [sp.eye(2)]
@@ -42,6 +42,17 @@ class WaveletTransformOp(sp.linalg.LinearOperator):
             self.q.append(WaveletTransformOp._q(j + 1))
         self.pT = [p.T.tocsr() for p in self.p]
         self.qT = [q.T.tocsr() for q in self.q]
+        self.interleaved = interleaved
+        if interleaved:
+            self.levels = np.zeros(2**J + 1, dtype=int)
+            for j in reversed(range(0, J + 1)):
+                self.levels[::2**(J - j)] = j
+        else:
+            N_wavelets_lvl = [2] + [2**(j - 1) for j in range(1, self.J + 1)]
+            self.levels = [
+                j for j, N_wavelets in enumerate(N_wavelets_lvl)
+                for _ in range(N_wavelets)
+            ]
 
     def _p(j):
         mat = sp.lil_matrix((2**(j - 1) + 1, 2**j + 1))
@@ -63,19 +74,30 @@ class WaveletTransformOp(sp.linalg.LinearOperator):
 
     def _matmat(self, x):
         y = x.copy()
-        for j in range(1, self.J + 1):
-            N_coarse = 2**(j - 1) + 1
-            N_fine = 2**j + 1
-            y[:N_fine] = self.p[j] @ y[:N_coarse] + self.q[j] @ y[N_coarse:
-                                                                  N_fine]
+        if self.interleaved:
+            for j in range(1, self.J + 1):
+                S = 2**(self.J - j)
+                y[::S] = self.p[j] @ y[::S][::2] + self.q[j] @ y[::S][1::2]
+        else:
+            for j in range(1, self.J + 1):
+                N_coarse = 2**(j - 1) + 1
+                N_fine = 2**j + 1
+                y[:N_fine] = self.p[j] @ y[:N_coarse] + self.q[j] @ y[
+                    N_coarse:N_fine]
         return y
 
     def _rmatvec(self, x):
         y = x.copy()
-        for j in reversed(range(1, self.J + 1)):
-            N_coarse = 2**(j - 1) + 1
-            N_fine = 2**j + 1
-            y[:N_coarse], y[N_coarse:N_fine] = self.pT[
-                j] @ y[:N_fine], self.qT[j] @ y[:N_fine]
+        if self.interleaved:
+            for j in reversed(range(1, self.J + 1)):
+                S = 2**(self.J - j)
+                y[::S][::2], y[::S][
+                    1::2] = self.pT[j] @ y[::S], self.qT[j] @ y[::S]
+        else:
+            for j in reversed(range(1, self.J + 1)):
+                N_coarse = 2**(j - 1) + 1
+                N_fine = 2**j + 1
+                y[:N_coarse], y[N_coarse:N_fine] = self.pT[
+                    j] @ y[:N_fine], self.qT[j] @ y[:N_fine]
 
         return y

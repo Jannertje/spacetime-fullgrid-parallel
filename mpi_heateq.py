@@ -89,11 +89,7 @@ class HeatEquationMPI:
         self.S = SumMPI(
             [self.A_MKM, self.L_MKA, self.LT_AKM, self.M_AKA, self.G_M])
 
-        N_wavelets_lvl = [2] + [2**(j - 1) for j in range(1, self.J + 1)]
-        self.P = BlockDiagMPI([
-            self.CAC_j[j] for j, N_wavelets in enumerate(N_wavelets_lvl)
-            for _ in range(N_wavelets)
-        ])
+        self.P = BlockDiagMPI([self.CAC_j[j] for j in self.W_t.levels])
 
         self.W = MatKronIdentityMPI(self.W_t, self.M)
         self.WT = MatKronIdentityMPI(self.W_t.H, self.M)

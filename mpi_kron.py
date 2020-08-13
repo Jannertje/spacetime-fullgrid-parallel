@@ -6,8 +6,6 @@ from mpi_vector import KronVectorMPI
 
 
 def as_matrix(operator):
-    if hasattr(operator, "A"):
-        return operator.A
     cols = operator.shape[1]
     return operator @ np.eye(cols)
 

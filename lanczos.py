@@ -94,7 +94,7 @@ class Lanczos:
             P = sp.identity(A.shape[0])
 
         # Measure start time
-        start = time.clock()
+        start = time.process_time()
 
         # Initialize with random vector
         if w is None:
@@ -144,7 +144,7 @@ class Lanczos:
 
         # final values
         self.iterations = k + 1
-        self.time = time.clock() - start
+        self.time = time.process_time() - start
 
         self.lmax = lmax
         self.lmin = lmin
