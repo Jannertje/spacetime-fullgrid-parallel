@@ -14,10 +14,13 @@ def construct_3d_cube_mesh(nrefines=1):
 
 
 def construct_2d_square_mesh(nrefines=1):
-    from netgen.geom2d import unit_square
-    mesh = Mesh(unit_square.GenerateMesh(maxh=1))
+    from netgen.geom2d import SplineGeometry
+    geo = SplineGeometry()
+    geo.AddRectangle((0, 0), (1, 1))
+    ngmesh = geo.GenerateMesh()
     for _ in range(nrefines):
-        mesh.Refine()
+        ngmesh.Refine()
+    mesh = Mesh(ngmesh)
     return mesh, "default"
 
 
