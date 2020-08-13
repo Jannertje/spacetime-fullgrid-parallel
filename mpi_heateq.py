@@ -1,28 +1,28 @@
-from pprint import pprint
+import argparse
+import os
 
 import numpy as np
+import psutil
 import pyamg
-import scipy
-import scipy.sparse
 from mpi4py import MPI
-from ngsolve import (H1, L2, BilinearForm, InnerProduct, Preconditioner, ds,
-                     dx, grad)
+from ngsolve import H1, InnerProduct, Preconditioner, ds, dx, grad, ngsglobals
 from scipy.sparse.linalg.interface import LinearOperator
 
-from bilform import BilForm, KronBF
-from demo import demo
+from bilform import BilForm
 from fespace import KronFES
-from lanczos import Lanczos
 from linalg import PCG
 from linform import LinForm
 from linop import AsLinearOperator, CompositeLinOp
-from mpi_kron import (BlockDiagMPI, CompositeMPI, IdentityKronMatMPI,
-                      IdentityMPI, LinearOperatorMPI, MatKronIdentityMPI,
-                      SumMPI, TridiagKronIdentityMPI, TridiagKronMatMPI,
-                      as_matrix)
+from mpi_kron import (BlockDiagMPI, CompositeMPI, MatKronIdentityMPI, SumMPI,
+                      TridiagKronMatMPI)
 from mpi_vector import KronVectorMPI
-from problem import cube, square
+from problem import square
 from wavelets import WaveletTransformOp
+
+
+def mem():
+    process = psutil.Process(os.getpid())
+    return process.memory_info().rss / 1048576
 
 
 def PyAMG(A):
@@ -66,10 +66,14 @@ class HeatEquationMPI:
         A_x = BilForm(
             X.space,
             bilform_lambda=lambda u, v: InnerProduct(grad(u), grad(v)) * dx)
-        Kinv_x_pc = Preconditioner(A_x.bf, precond)
+        if precond != 'pyamg':
+            Kinv_x_pc = Preconditioner(A_x.bf, precond)
         self.A_x = A_x.assemble()
-        self.Kinv_x = AsLinearOperator(Kinv_x_pc.mat, X.space.fd)
-        # self.Kinv_x = PyAMG(self.A_x)
+
+        if precond != 'pyamg':
+            self.Kinv_x = AsLinearOperator(Kinv_x_pc.mat, X.space.fd)
+        else:
+            self.Kinv_x = PyAMG(self.A_x)
 
         # --- Preconditioner on X ---
         self.C_j = []
@@ -78,10 +82,14 @@ class HeatEquationMPI:
             bf = BilForm(X.space,
                          bilform_lambda=lambda u, v:
                          (2**j * u * v + self.alpha * grad(u) * grad(v)) * dx)
-            C = Preconditioner(bf.bf, precond)
+            if precond != 'pyamg':
+                C = Preconditioner(bf.bf, precond)
             bf.bf.Assemble()
-            self.C_j.append(AsLinearOperator(C.mat, X.space.fd))
-            #self.C_j.append(PyAMG(bf.assemble()))
+
+            if precond != 'pyamg':
+                self.C_j.append(AsLinearOperator(C.mat, X.space.fd))
+            else:
+                self.C_j.append(PyAMG(bf.assemble()))
 
         self.CAC_j = [
             CompositeLinOp([self.C_j[j], self.A_x, self.C_j[j]])
@@ -128,21 +136,32 @@ class HeatEquationMPI:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description='Solve heatequation using MPI.')
+    parser.add_argument('--precond',
+                        default='direct',
+                        help='type of preconditioner')
+
+    args = parser.parse_args()
+    precond = args.precond
+
+    ngsglobals.msg_level = 0
     rank = MPI.COMM_WORLD.Get_rank()
     size = MPI.COMM_WORLD.Get_size()
-    if rank == 0:
-        print('MPI tasks: ', size)
     for refines in range(2, 12):
         if size > 2**refines + 1:
             continue
 
         MPI.COMM_WORLD.Barrier()
-        heat_eq_mpi = HeatEquationMPI(refines, precond='bddc')
+        heat_eq_mpi = HeatEquationMPI(refines, precond=precond)
         if rank == 0:
             print('\n\nCreating mesh with {} refines.'.format(refines))
+            print('MPI tasks: ', size)
+            print('Preconditioner: ', precond)
             print('N = {}. M = {}.'.format(heat_eq_mpi.N, heat_eq_mpi.M))
             print('Constructed bilinear forms in {} s.'.format(
                 heat_eq_mpi.setup_time))
+            print('Total memory: {}mb'.format(mem()))
 
         # Solve.
         def cb(w, residual, k):
