@@ -1,6 +1,7 @@
 from pprint import pprint
 
 import numpy as np
+import pyamg
 import scipy
 import scipy.sparse
 from mpi4py import MPI
@@ -22,6 +23,15 @@ from mpi_kron import (BlockDiagMPI, CompositeMPI, IdentityKronMatMPI,
 from mpi_vector import KronVectorMPI
 from problem import cube, square
 from wavelets import WaveletTransformOp
+
+
+def PyAMG(A):
+    ml = pyamg.ruge_stuben_solver(A)
+
+    def matvec(x):
+        return ml.solve(x)
+
+    return LinearOperator(matvec=matvec, shape=A.shape)
 
 
 class HeatEquationMPI:
@@ -56,21 +66,22 @@ class HeatEquationMPI:
         A_x = BilForm(
             X.space,
             bilform_lambda=lambda u, v: InnerProduct(grad(u), grad(v)) * dx)
-        Kinv_x_pc = Preconditioner(A_x.bf, precond)
+        # Kinv_x_pc = Preconditioner(A_x.bf, precond)
         self.A_x = A_x.assemble()
-        self.Kinv_x = AsLinearOperator(Kinv_x_pc.mat, X.space.fd)
+        self.Kinv_x = PyAMG(self.A_x)
+        # self.Kinv_x = AsLinearOperator(Kinv_x_pc.mat, X.space.fd)
 
         # --- Preconditioner on X ---
         self.C_j = []
         self.alpha = 0.5
         for j in range(self.J + 1):
-            bf = BilForm(
-                X.space,
-                bilform_lambda=lambda u, v:
-                (2**j * u * v + self.alpha * grad(u) * grad(v)) * dx).bf
-            C = Preconditioner(bf, precond)
-            bf.Assemble()
-            self.C_j.append(AsLinearOperator(C.mat, X.space.fd))
+            bf = BilForm(X.space,
+                         bilform_lambda=lambda u, v:
+                         (2**j * u * v + self.alpha * grad(u) * grad(v)) * dx)
+            # C = Preconditioner(bf, precond)
+            # bf.Assemble()
+            # self.C_j.append(AsLinearOperator(C.mat, X.space.fd))
+            self.C_j.append(PyAMG(bf.assemble()))
 
         self.CAC_j = [
             CompositeLinOp([self.C_j[j], self.A_x, self.C_j[j]])
