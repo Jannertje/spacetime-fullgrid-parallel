@@ -1,4 +1,4 @@
-from ngsolve import Mesh, Draw, mpi_world
+from ngsolve import Draw, Mesh, mpi_world
 
 
 def construct_3d_cube_mesh(nrefines=1):
@@ -14,13 +14,10 @@ def construct_3d_cube_mesh(nrefines=1):
 
 
 def construct_2d_square_mesh(nrefines=1):
-    from netgen.geom2d import SplineGeometry
-    geo = SplineGeometry()
-    geo.AddRectangle((0, 0), (1, 1))
-    ngmesh = geo.GenerateMesh()
+    from netgen.geom2d import unit_square
+    mesh = Mesh(unit_square.GenerateMesh(maxh=1))
     for _ in range(nrefines):
-        ngmesh.Refine()
-    mesh = Mesh(ngmesh)
+        mesh.Refine()
     return mesh, "default"
 
 
