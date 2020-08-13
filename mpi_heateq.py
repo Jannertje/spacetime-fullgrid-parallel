@@ -26,6 +26,8 @@ from wavelets import WaveletTransformOp
 
 class HeatEquationMPI:
     def __init__(self, refines=2, precond='multigrid', order=1):
+        start_time = MPI.Wtime()
+
         mesh_space, bc_space, mesh_time, data, fn = square(nrefines=refines)
         X = KronFES(H1(mesh_time, order=order),
                     H1(mesh_space, order=order, dirichlet=bc_space))
@@ -105,25 +107,44 @@ class HeatEquationMPI:
         self.rhs.X_loc = np.kron(self.u0_t[self.rhs.t_begin:self.rhs.t_end],
                                  self.u0_x).reshape(-1, self.M)
 
+        self.setup_time = MPI.Wtime() - start_time
+
+    def print_time_per_apply(self):
+        print('W: ', self.W.time_per_apply())
+        print('S: ', self.S.time_per_apply())
+        print('WT:', self.WT.time_per_apply())
+        print('P: ', self.P.time_per_apply())
+
 
 if __name__ == "__main__":
-    refines = 4
-    heat_eq_mpi = HeatEquationMPI(refines)
-    N = heat_eq_mpi.N
-    M = heat_eq_mpi.M
-    comm = MPI.COMM_WORLD
+    rank = MPI.COMM_WORLD.Get_rank()
+    size = MPI.COMM_WORLD.Get_size()
+    if rank == 0:
+        print('MPI tasks: ', size)
+    for refines in range(2, 10):
+        if size > 2**refines + 1:
+            continue
 
-    # Create random MPI vector.
-    w_mpi = KronVectorMPI(comm, N, M)
-    w_mpi.X_loc = np.random.rand(w_mpi.X_loc.shape[0], M)
-    print(w_mpi.X_loc)
+        heat_eq_mpi = HeatEquationMPI(refines)
+        if rank == 0:
+            print('\n\nCreating mesh with {} refines.'.format(refines))
+            print('N = {}. M = {}.'.format(heat_eq_mpi.N, heat_eq_mpi.M))
+            print('Constructed bilinear forms in {} s.'.format(
+                heat_eq_mpi.setup_time))
 
-    # Perform Lanczos.
-    lanczos = Lanczos(heat_eq_mpi.WT_S_W, heat_eq_mpi.P, w=w_mpi)
+        # Solve.
+        def cb(w, residual, k):
+            if rank == 0:
+                print('.', end='', flush=True)
 
-    if w_mpi.rank == 0:
-        print(N * M, lanczos)
+        solve_time = MPI.Wtime()
+        u_mpi_P, iters = PCG(heat_eq_mpi.WT_S_W,
+                             heat_eq_mpi.P,
+                             heat_eq_mpi.rhs,
+                             callback=cb)
 
-        # Compare to demo
-        _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines))
-        #print('cond(P @ WT @ S @ W)', Lanczos(WT @ S @ W, P))
+        if rank == 0:
+            print('')
+            print('Completed in {} PCG steps.'.format(iters))
+            print('Total solve time: {}s.'.format(MPI.Wtime() - solve_time))
+            heat_eq_mpi.print_time_per_apply()

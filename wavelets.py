@@ -32,11 +32,21 @@ def WaveletTransformMat(J):
     return T
 
 
+class TransposeLinearOp(sp.linalg.LinearOperator):
+    def __init__(self, linop):
+        super().__init__(dtype=np.float64,
+                         shape=(linop.shape[1], linop.shape[0]))
+        self.linop = linop
+
+    def _matmat(self, x):
+        return self.linop._rmatmat(x)
+
+
 class WaveletTransformOp(sp.linalg.LinearOperator):
     def __init__(self, J, interleaved=False):
         super().__init__(dtype=np.float64, shape=(2**J + 1, 2**J + 1))
         self.J = J
-        self.p, self.q = [sp.eye(0)], [sp.eye(2)]
+        self.p, self.q = [sp.eye(1)], [sp.eye(2)]
         for j in range(J):
             self.p.append(WaveletTransformOp._p(j + 1))
             self.q.append(WaveletTransformOp._q(j + 1))
@@ -86,7 +96,7 @@ class WaveletTransformOp(sp.linalg.LinearOperator):
                     N_coarse:N_fine]
         return y
 
-    def _rmatvec(self, x):
+    def _rmatmat(self, x):
         y = x.copy()
         if self.interleaved:
             for j in reversed(range(1, self.J + 1)):
@@ -101,3 +111,6 @@ class WaveletTransformOp(sp.linalg.LinearOperator):
                     j] @ y[:N_fine], self.qT[j] @ y[:N_fine]
 
         return y
+
+    def _adjoint(self):
+        return TransposeLinearOp(self)
