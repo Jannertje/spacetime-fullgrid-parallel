@@ -66,10 +66,10 @@ class HeatEquationMPI:
         A_x = BilForm(
             X.space,
             bilform_lambda=lambda u, v: InnerProduct(grad(u), grad(v)) * dx)
-        # Kinv_x_pc = Preconditioner(A_x.bf, precond)
+        Kinv_x_pc = Preconditioner(A_x.bf, precond)
         self.A_x = A_x.assemble()
-        self.Kinv_x = PyAMG(self.A_x)
-        # self.Kinv_x = AsLinearOperator(Kinv_x_pc.mat, X.space.fd)
+        self.Kinv_x = AsLinearOperator(Kinv_x_pc.mat, X.space.fd)
+        # self.Kinv_x = PyAMG(self.A_x)
 
         # --- Preconditioner on X ---
         self.C_j = []
@@ -78,10 +78,10 @@ class HeatEquationMPI:
             bf = BilForm(X.space,
                          bilform_lambda=lambda u, v:
                          (2**j * u * v + self.alpha * grad(u) * grad(v)) * dx)
-            # C = Preconditioner(bf, precond)
-            # bf.Assemble()
-            # self.C_j.append(AsLinearOperator(C.mat, X.space.fd))
-            self.C_j.append(PyAMG(bf.assemble()))
+            C = Preconditioner(bf.bf, precond)
+            bf.bf.Assemble()
+            self.C_j.append(AsLinearOperator(C.mat, X.space.fd))
+            #self.C_j.append(PyAMG(bf.assemble()))
 
         self.CAC_j = [
             CompositeLinOp([self.C_j[j], self.A_x, self.C_j[j]])
@@ -137,7 +137,7 @@ if __name__ == "__main__":
             continue
 
         MPI.COMM_WORLD.Barrier()
-        heat_eq_mpi = HeatEquationMPI(refines)
+        heat_eq_mpi = HeatEquationMPI(refines, precond='bddc')
         if rank == 0:
             print('\n\nCreating mesh with {} refines.'.format(refines))
             print('N = {}. M = {}.'.format(heat_eq_mpi.N, heat_eq_mpi.M))
