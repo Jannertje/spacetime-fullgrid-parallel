@@ -121,10 +121,11 @@ if __name__ == "__main__":
     size = MPI.COMM_WORLD.Get_size()
     if rank == 0:
         print('MPI tasks: ', size)
-    for refines in range(2, 10):
+    for refines in range(2, 12):
         if size > 2**refines + 1:
             continue
 
+        MPI.COMM_WORLD.Barrier()
         heat_eq_mpi = HeatEquationMPI(refines)
         if rank == 0:
             print('\n\nCreating mesh with {} refines.'.format(refines))
