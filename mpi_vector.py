@@ -1,4 +1,5 @@
 import numpy as np
+
 from mpi4py import MPI
 
 
@@ -37,6 +38,10 @@ class KronVectorMPI:
         self.X_loc = np.zeros((self.t_end - self.t_begin, self.M),
                               dtype=np.float64)
 
+        self.dof2proc = np.zeros(self.N)
+        for p, (t_begin, t_end) in enumerate(self.dof_distribution):
+            self.dof2proc[t_begin:t_end] = p
+
     def __iadd__(self, other):
         self.X_loc += other.X_loc
         return self
@@ -65,12 +70,6 @@ class KronVectorMPI:
         vec_out.X_loc = self.X_loc / other
         return vec_out
 
-    def dof2proc(self):
-        result = np.zeros(self.N)
-        for p, (t_begin, t_end) in enumerate(self.dof_distribution):
-            result[t_begin:t_end] = p
-        return result
-
     def scatter(self, X_glob):
         data = [None, None, None, MPI.DOUBLE]
         if self.rank == 0:
@@ -97,6 +96,22 @@ class KronVectorMPI:
 
         MPI.Request.Waitall(reqs)
         return bdr
+
+    def communicate_dofs(self, remote_dofs):
+        reqs = []
+        X_recv = np.zeros((len(remote_dofs), self.M))
+        for i, (row, col) in enumerate(remote_dofs):
+            reqs.append(
+                self.comm.Isend(self.X_loc[row, :],
+                                dest=self.dof2proc[col],
+                                tag=row))
+            reqs.append(
+                self.comm.Irecv(X_recv[i, :],
+                                source=self.dof2proc[col],
+                                tag=col))
+
+        MPI.Request.Waitall(reqs)
+        return X_recv
 
     def dot(self, vec_other):
         assert (isinstance(vec_other, KronVectorMPI))

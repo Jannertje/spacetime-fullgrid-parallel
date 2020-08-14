@@ -18,11 +18,6 @@ class LevelWaveletTransformOp(wavelets.WaveletTransformOp):
         for j in range(J + 1):
             self.split.append(
                 LevelWaveletTransformOp._split(J, j, self.p[j], self.q[j]))
-        plt.imshow(
-            np.log10(
-                np.abs(np.hstack([split.toarray()
-                                  for split in self.split[1:]]))))
-        plt.show()
 
     def _split(J, j, p, q):
         if j == 0: return sp.csr_matrix((2**J + 1, 2**J + 1))
@@ -46,12 +41,13 @@ class LevelWaveletTransformOp(wavelets.WaveletTransformOp):
         return y
 
 
-J = 5
-W = LevelWaveletTransformOp(J=J)
-#assert np.allclose(W.T_.toarray().T, W.T @ np.eye(2**4 + 1))
-plt.imshow(
-    np.log10(
-        np.abs(W @ np.eye(2**J + 1) - wavelets.WaveletTransformOp(
-            J=J, interleaved=True) @ np.eye(2**J + 1))))
-plt.colorbar()
-plt.show()
+if __name__ == "__main__":
+    J = 5
+    W = LevelWaveletTransformOp(J=J)
+    #assert np.allclose(W.T_.toarray().T, W.T @ np.eye(2**4 + 1))
+    plt.imshow(
+        np.log10(
+            np.abs(W @ np.eye(2**J + 1) - wavelets.WaveletTransformOp(
+                J=J, interleaved=True) @ np.eye(2**J + 1))))
+    plt.colorbar()
+    plt.show()

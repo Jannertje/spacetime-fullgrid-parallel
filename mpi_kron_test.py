@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.sparse
-from mpi4py import MPI
 
+from mpi4py import MPI
 from mpi_kron import (BlockDiagMPI, IdentityKronMatMPI, LinearOperatorMPI,
                       MatKronIdentityMPI, TridiagKronIdentityMPI, as_matrix)
 from mpi_vector import KronVectorMPI
@@ -30,6 +30,12 @@ def linop_test_MPI(linop_mpi, mat_glob):
     rank = MPI.COMM_WORLD.Get_rank()
     mat_mpi = linop_mpi.as_global_matrix()
     if rank == 0:
+        import matplotlib.pyplot as plt
+        plt.figure()
+        plt.imshow(
+            np.log10(np.abs(mat_mpi @ np.eye(mat_mpi.shape[0]) - mat_glob)))
+        plt.colorbar()
+        plt.show()
         assert (np.allclose(mat_mpi, mat_glob))
 
 
