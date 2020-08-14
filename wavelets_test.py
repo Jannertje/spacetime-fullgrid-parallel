@@ -1,9 +1,11 @@
 from math import sqrt
 
 import numpy as np
+import scipy.sparse
 
 from mpi_kron import as_matrix
-from wavelets import WaveletTransformMat, WaveletTransformOp
+from wavelets import (WaveletTransformKronIdentityMPI, WaveletTransformMat,
+                      WaveletTransformOp)
 
 
 def test_mat_equals_matfree():
@@ -60,3 +62,16 @@ def test_interleaved_wavelet_transform_works():
                         np.linspace(-sqrt(2), sqrt(2), 2**(J - 1) + 1)))
     assert (np.allclose(y[2**(J - 1):],
                         np.linspace(sqrt(2), -sqrt(2), 2**(J - 1) + 1)))
+
+
+def test_level_wavelet_transform_works():
+    J = 4
+    WOp = WaveletTransformKronIdentityMPI(J, M=1)
+    WOp2 = WaveletTransformOp(J, interleaved=True)
+
+    I = np.eye(2**J + 1)
+    import matplotlib.pyplot as plt
+    plt.imshow(WOp.as_global_matrix())
+    plt.colorbar()
+    plt.show()
+    assert (np.allclose(WOp.as_global_matrix(), WOp2 @ I))

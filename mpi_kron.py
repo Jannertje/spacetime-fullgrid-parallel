@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.sparse
-from mpi4py import MPI
 
+from mpi4py import MPI
 from mpi_vector import KronVectorMPI
 
 
@@ -96,6 +96,14 @@ class CompositeMPI(LinearOperatorMPI):
         Y = vec_in
         for linop in reversed(self.linops):
             Y = linop @ Y
+        vec_out.X_loc = Y.X_loc
+        return vec_out
+
+    def _rmatvec(self, vec_in, vec_out):
+        assert (vec_in is not vec_out)
+        Y = vec_in
+        for linop in self.linops:
+            Y = linop.rmatvec(Y)
         vec_out.X_loc = Y.X_loc
         return vec_out
 
@@ -218,5 +226,46 @@ class MatKronIdentityMPI(LinearOperatorMPI):
 
         # Permute the vector back.
         vec_in_permuted.permute(vec_out)
+
+        return vec_out
+
+
+class SparseKronIdentityMPI(LinearOperatorMPI):
+    """ Requires a square matrix in CSR with symmetric sparsity pattern. """
+    def __init__(self, mat_time, dofs_space, add_identity=False):
+        assert (scipy.sparse.isspmatrix_csr(mat_time))
+        N, K = mat_time.shape
+        M = dofs_space
+        assert (N == K)
+        self.mat_time = mat_time
+        self.comm_dofs = None
+        self.add_identity = add_identity
+        super().__init__(N, M)
+
+    def _matvec(self, vec_in, vec_out):
+        assert (isinstance(vec_in, KronVectorMPI))
+        assert (self.N == vec_in.N and self.M == vec_in.M)
+        assert (vec_in.X_loc.shape == vec_out.X_loc.shape)
+
+        if not self.comm_dofs:
+            comm_dofs = set()
+            for row in range(vec_in.t_begin, vec_in.t_end):
+                for col in self.mat_time[row, :].indices:
+                    if col < vec_in.t_begin or vec_in.t_end <= col:
+                        comm_dofs.add((row, col))
+            self.comm_dofs = sorted(comm_dofs)
+        recv_dofs = [dof for _, dof in self.comm_dofs]
+
+        X = scipy.sparse.lil_matrix((vec_in.N, vec_in.M))
+        X[vec_in.t_begin:vec_in.t_end] = vec_in.X_loc
+        if len(self.comm_dofs):
+            X[recv_dofs] = vec_in.communicate_dofs(self.comm_dofs)
+
+        # TODO: replace dense matmat
+        Y = (self.mat_time[vec_in.t_begin:vec_in.t_end] @ X.tocsc()).toarray()
+        if self.add_identity:
+            vec_out.X_loc = vec_in.X_loc + Y
+        else:
+            vec_out.X_loc = Y
 
         return vec_out

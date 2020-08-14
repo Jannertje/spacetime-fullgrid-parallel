@@ -3,7 +3,7 @@ import scipy.sparse as sp
 import scipy.sparse.linalg
 from scipy import sparse as sp
 
-from mpi_kron import as_matrix
+from mpi_kron import CompositeMPI, SparseKronIdentityMPI, as_matrix
 
 
 def WaveletTransformMat(J):
@@ -92,8 +92,8 @@ class WaveletTransformOp(sp.linalg.LinearOperator):
             for j in range(1, self.J + 1):
                 N_coarse = 2**(j - 1) + 1
                 N_fine = 2**j + 1
-                y[:N_fine] = self.p[j] @ y[:N_coarse] + self.q[j] @ y[
-                    N_coarse:N_fine]
+                y[:N_fine] = self.p[j] @ y[:N_coarse] + self.q[j] @ y[N_coarse:
+                                                                      N_fine]
         return y
 
     def _rmatmat(self, x):
@@ -114,3 +114,42 @@ class WaveletTransformOp(sp.linalg.LinearOperator):
 
     def _adjoint(self):
         return TransposeLinearOp(self)
+
+
+class LevelWaveletTransformOp(WaveletTransformOp):
+    def __init__(self, J):
+        super().__init__(J=J, interleaved=True)
+        self.split = []
+        for j in range(J + 1):
+            self.split.append(
+                LevelWaveletTransformOp._split(J, j, self.p[j], self.q[j]))
+
+    def _split(J, j, p, q):
+        if j == 0: return sp.csr_matrix((2**J + 1, 2**J + 1))
+        I = np.eye(2**J + 1)
+        mat = np.eye(2**J + 1)
+        S = 2**(J - j)
+        mat[::S] = p @ I[::S][::2] + q @ I[::S][1::2]
+        mat -= sp.eye(2**J + 1)
+        return sp.csr_matrix(mat)
+
+    def _matmat(self, x):
+        y = x.copy()
+        for j in range(1, self.J + 1):
+            y += self.split[j] @ y
+        return y
+
+    def _rmatmat(self, x):
+        y = x.copy()
+        for j in reversed(range(1, self.J + 1)):
+            y += self.splitT[j] @ y
+        return y
+
+
+class WaveletTransformKronIdentityMPI(CompositeMPI):
+    def __init__(self, J, M):
+        wavelet_transform = LevelWaveletTransformOp(J)
+        linops = []
+        for split in reversed(wavelet_transform.split):
+            linops.append(SparseKronIdentityMPI(split, M, add_identity=True))
+        super().__init__(linops)

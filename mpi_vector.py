@@ -97,18 +97,18 @@ class KronVectorMPI:
         MPI.Request.Waitall(reqs)
         return bdr
 
-    def communicate_dofs(self, remote_dofs):
+    def communicate_dofs(self, comm_dofs):
         reqs = []
-        X_recv = np.zeros((len(remote_dofs), self.M))
-        for i, (row, col) in enumerate(remote_dofs):
+        X_recv = np.zeros((len(comm_dofs), self.M))
+        for i, (send, recv) in enumerate(comm_dofs):
             reqs.append(
-                self.comm.Isend(self.X_loc[row, :],
-                                dest=self.dof2proc[col],
-                                tag=row))
+                self.comm.Isend(self.X_loc[send - self.t_begin, :],
+                                dest=self.dof2proc[recv],
+                                tag=send))
             reqs.append(
                 self.comm.Irecv(X_recv[i, :],
-                                source=self.dof2proc[col],
-                                tag=col))
+                                source=self.dof2proc[recv],
+                                tag=recv))
 
         MPI.Request.Waitall(reqs)
         return X_recv
