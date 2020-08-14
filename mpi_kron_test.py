@@ -91,5 +91,7 @@ def test_composite():
 
     rank = MPI.COMM_WORLD.Get_rank()
     if rank == 0:
-        mat_mpi = linop.as_global_matrix()
-        assert np.allclose(mat_mpi, np.kron(mat_time, mat_space))
+        assert np.allclose(linop.as_global_matrix(),
+                           np.kron(mat_time, mat_space))
+        assert np.allclose(linop.as_global_transposed_matrix(),
+                           np.kron(mat_time.T, mat_space.T))
