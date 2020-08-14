@@ -5,8 +5,8 @@ import scipy.sparse
 
 from mpi4py import MPI
 from mpi_kron import as_matrix
-from wavelets import (WaveletTransformKronIdentityMPI, WaveletTransformMat,
-                      WaveletTransformOp)
+from wavelets import (LevelWaveletTransformOp, WaveletTransformKronIdentityMPI,
+                      WaveletTransformMat, WaveletTransformOp)
 
 
 def test_mat_equals_matfree():
@@ -65,10 +65,12 @@ def test_interleaved_wavelet_transform_works():
                         np.linspace(sqrt(2), -sqrt(2), 2**(J - 1) + 1)))
 
 
-def test_level_wavelet_transform_works():
+def test_mpi_wavelet_transform_works():
     J = 4
     rank = MPI.COMM_WORLD.Get_rank()
     if rank == 0:
         WOp = WaveletTransformKronIdentityMPI(J, M=1)
         WOp2 = WaveletTransformOp(J, interleaved=True)
+        WOp3 = LevelWaveletTransformOp(J)
         assert np.allclose(WOp.as_global_matrix(), as_matrix(WOp2))
+        assert np.allclose(as_matrix(WOp3), as_matrix(WOp2))
