@@ -10,7 +10,6 @@ def test_mat_equals_matfree():
     for J in range(1, 8):
         WOp = WaveletTransformOp(J)
         WMat = WaveletTransformMat(J)
-        assert np.allclose(as_matrix(WOp).T, as_matrix(WOp.T))
         assert np.allclose(as_matrix(WOp), as_matrix(WMat))
         assert np.allclose(as_matrix(WOp.H), as_matrix(WMat).T)
 
