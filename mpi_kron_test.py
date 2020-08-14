@@ -2,8 +2,9 @@ import numpy as np
 import scipy.sparse
 
 from mpi4py import MPI
-from mpi_kron import (BlockDiagMPI, IdentityKronMatMPI, LinearOperatorMPI,
-                      MatKronIdentityMPI, TridiagKronIdentityMPI, as_matrix)
+from mpi_kron import (BlockDiagMPI, CompositeMPI, IdentityKronMatMPI,
+                      LinearOperatorMPI, MatKronIdentityMPI,
+                      TridiagKronIdentityMPI, as_matrix)
 from mpi_vector import KronVectorMPI
 
 
@@ -77,3 +78,18 @@ def test_block_diag():
 
     Blk = BlockDiagMPI(matrices_space)
     linop_test_MPI(Blk, scipy.sparse.block_diag(matrices_space).toarray())
+
+
+def test_composite():
+    N = 9
+    M = 16
+    mat_time = np.arange(0, N * N).reshape(N, N)
+    mat_space = np.arange(0, M * M).reshape(M, M)
+    M_I = MatKronIdentityMPI(mat_time, M)
+    I_M = IdentityKronMatMPI(N, mat_space)
+    linop = CompositeMPI([I_M, M_I])
+
+    rank = MPI.COMM_WORLD.Get_rank()
+    if rank == 0:
+        mat_mpi = linop.as_global_matrix()
+        assert np.allclose(mat_mpi, np.kron(mat_time, mat_space))
