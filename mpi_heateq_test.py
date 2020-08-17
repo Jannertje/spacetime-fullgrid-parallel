@@ -67,7 +67,7 @@ def test_bilforms():
 def test_S_apply():
     # Gather the space/time stiffness matrices.
     refines = 2
-    heat_eq_mpi = HeatEquationMPI(refines)
+    heat_eq_mpi = HeatEquationMPI(refines, precond='direct')
     N = heat_eq_mpi.N
     M = heat_eq_mpi.M
 
@@ -82,10 +82,8 @@ def test_S_apply():
         x_glob = np.random.rand(N * M) * 1.0
 
         # Compare to demo
-        _, _, _, S, _, _, _, _, _, _, _ = demo(*square(refines))
-        print('N =', N, 'M =', M)
-        print('S (from demo).shape =', S.shape)
-        print('x_glob.shape =', x_glob.shape)
+        _, _, _, S, _, _, _, _, _, _, _ = demo(*square(refines),
+                                               precond='direct')
         y_glob = S @ x_glob
 
         # Compare to np.kron
@@ -103,7 +101,7 @@ def test_S_apply():
 
 def test_solve():
     refines = 2
-    heat_eq_mpi = HeatEquationMPI(refines)
+    heat_eq_mpi = HeatEquationMPI(refines, precond='direct')
     N = heat_eq_mpi.N
     M = heat_eq_mpi.M
 
@@ -118,7 +116,8 @@ def test_solve():
         f_glob_mpi = np.empty(N * M)
 
         # Extract f_glob from demo.
-        _, _, _, S, _, _, _, _, f_glob_demo, _, _ = demo(*square(refines))
+        _, _, _, S, _, _, _, _, f_glob_demo, _, _ = demo(*square(refines),
+                                                         precond='direct')
 
         # Solve on root.
         u_glob_demo, _ = PCG(S, scipy.sparse.identity(N * M), f_glob_demo)
@@ -149,8 +148,7 @@ def linop_test_apply_MPI(linop_mpi, linop):
 
     x_glob = None
     if x_mpi.rank == 0:
-        x_glob = np.zeros(linop_mpi.N * linop_mpi.M)
-        x_glob[0] = 1
+        x_glob = np.random.rand(linop_mpi.N * linop_mpi.M)
         y_glob = linop @ x_glob
 
     x_mpi.scatter(x_glob)
@@ -162,22 +160,23 @@ def linop_test_apply_MPI(linop_mpi, linop):
 
 
 def test_demo():
-    refines = 3
-    heat_eq_mpi = HeatEquationMPI(refines)
+    refines = 2
+    heat_eq_mpi = HeatEquationMPI(refines, precond='direct')
 
-    _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines))
+    _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines), precond='direct')
     linop_test_MPI(heat_eq_mpi.WT_S_W, as_matrix(WT @ S @ W))
     linop_test_MPI(heat_eq_mpi.P, as_matrix(P))
 
-    for refines in range(3, 7):
-        heat_eq_mpi = HeatEquationMPI(refines)
+    for refines in range(2, 6):
+        heat_eq_mpi = HeatEquationMPI(refines, precond='direct')
         linearity_test_MPI(heat_eq_mpi.S)
         linearity_test_MPI(heat_eq_mpi.W)
         linearity_test_MPI(heat_eq_mpi.WT)
         linearity_test_MPI(heat_eq_mpi.WT_S_W)
         linearity_test_MPI(heat_eq_mpi.P)
 
-        _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines))
+        _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines),
+                                                precond='direct')
         linop_test_apply_MPI(heat_eq_mpi.S, S)
         linop_test_apply_MPI(heat_eq_mpi.W, W)
         linop_test_apply_MPI(heat_eq_mpi.WT, WT)
@@ -186,8 +185,8 @@ def test_demo():
 
 
 def test_preconditioner():
-    refines = 4
-    heat_eq_mpi = HeatEquationMPI(refines)
+    refines = 3
+    heat_eq_mpi = HeatEquationMPI(refines, precond='direct')
     N = heat_eq_mpi.N
     M = heat_eq_mpi.M
     comm = MPI.COMM_WORLD
@@ -206,6 +205,7 @@ def test_preconditioner():
 
     if w_mpi.rank == 0:
         # Compare to demo
-        _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines))
+        _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines),
+                                                precond='direct')
         lanczos_demo = Lanczos(WT @ S @ W, P)
-        assert abs(lanczos_mpi.cond() - lanczos_demo.cond()) < 0.2
+        assert abs(lanczos_mpi.cond() - lanczos_demo.cond()) < 0.3

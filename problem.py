@@ -50,7 +50,7 @@ def shaft(nrefines, N_time=None):
 def square(J_space, J_time=None):
     mesh_space, bc = construct_2d_square_mesh(nrefines=J_space)
     if not J_time:
-        J_time = np.log(mesh_space.nv**(1.0 / mesh_space.dim)) / np.log(2)
+        J_time = J_space
 
     N_time = 2**int(J_time + 0.5)
     mesh_time = construct_interval(N=N_time)
