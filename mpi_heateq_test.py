@@ -1,10 +1,10 @@
 import numpy as np
 import scipy.sparse
-from mpi4py import MPI
 
 from demo import demo
 from lanczos import Lanczos
 from linalg import PCG
+from mpi4py import MPI
 from mpi_heateq import HeatEquationMPI
 from mpi_kron import IdentityMPI, as_matrix
 from mpi_kron_test import linearity_test_MPI, linop_test_MPI
@@ -185,3 +185,26 @@ def test_preconditioner():
         _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines))
         lanczos_demo = Lanczos(WT @ S @ W, P)
         assert abs(lanczos_mpi.cond() - lanczos_demo.cond()) < 0.2
+
+
+def test_multigrid():
+    # Gather the space/time stiffness matrices.
+    refines = 1
+    heat_eq_mpi = HeatEquationMPI(refines, precond='multigrid')
+    M = heat_eq_mpi.M
+
+    print('M_x\n', heat_eq_mpi.M_x)
+    print('A_x\n', heat_eq_mpi.A_x)
+    print('Kinv_x\n', as_matrix(heat_eq_mpi.Kinv_x))
+    for linop in [
+            heat_eq_mpi.Kinv_x,
+            CompositeLinOp([heat_eq_mpi.Kinv_x, heat_eq_mpi.M_x]),
+            CompositeLinOp([heat_eq_mpi.Kinv_x, heat_eq_mpi.A_x])
+    ]:
+        print(linop)
+        x = np.random.rand(M)
+        mat = as_matrix(linop)
+
+        y_matfree = linop @ x
+        y_matvec = mat @ x
+        assert np.allclose(y_matfree, y_matvec)

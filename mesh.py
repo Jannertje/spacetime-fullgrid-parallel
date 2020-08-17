@@ -5,7 +5,7 @@ def construct_3d_cube_mesh(nrefines=1):
     from netgen.csg import OrthoBrick, Pnt, CSGeometry
     cube = OrthoBrick(Pnt(0, 0, 0), Pnt(1, 1, 1))
     geo = CSGeometry()
-    geo.Add(cube, maxh=1.0)
+    geo.Add(cube, maxh=0.4)
     ngmesh = geo.GenerateMesh()
     for _ in range(nrefines):
         ngmesh.Refine()
@@ -16,12 +16,24 @@ def construct_3d_cube_mesh(nrefines=1):
 def construct_2d_square_mesh(nrefines=1):
     from netgen.geom2d import SplineGeometry
     geo = SplineGeometry()
-    geo.AddRectangle((0, 0), (1, 1))
-    ngmesh = geo.GenerateMesh()
+    geo.AddRectangle((0, 0), (1, 1), bcs=["b", "r", "t", "l"], leftdomain=1)
+    mesh = Mesh(geo.GenerateMesh(maxh=0.4))
     for _ in range(nrefines):
-        ngmesh.Refine()
-    mesh = Mesh(ngmesh)
-    return mesh, "default"
+        for el in mesh.Elements():
+            mesh.SetRefinementFlag(el, True)
+        mesh.Refine()
+    return mesh, "b|r|t|l"
+
+
+#def construct_2d_square_mesh(nrefines=1):
+#    from netgen.geom2d import SplineGeometry
+#    geo = SplineGeometry()
+#    geo.AddRectangle((0, 0), (1, 1))
+#    ngmesh = geo.GenerateMesh()
+#    for _ in range(nrefines):
+#        ngmesh.Refine()
+#    mesh = Mesh(ngmesh)
+#    return mesh, "default"
 
 
 def construct_3d_shaft_mesh(nrefines=0):

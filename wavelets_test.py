@@ -1,12 +1,13 @@
 from math import sqrt
 
 import numpy as np
-import scipy.sparse
 
 from mpi4py import MPI
 from mpi_kron import as_matrix
-from wavelets import (LevelWaveletTransformOp, WaveletTransformKronIdentityMPI,
-                      WaveletTransformMat, WaveletTransformOp)
+from wavelets import (LevelWaveletTransformOp,
+                      TransposedWaveletTransformKronIdentityMPI,
+                      WaveletTransformKronIdentityMPI, WaveletTransformMat,
+                      WaveletTransformOp)
 
 
 def test_mat_equals_matfree():

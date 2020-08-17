@@ -31,14 +31,7 @@ def linop_test_MPI(linop_mpi, mat_glob):
     rank = MPI.COMM_WORLD.Get_rank()
     mat_mpi = linop_mpi.as_global_matrix()
     if rank == 0:
-        if not np.allclose(mat_mpi, mat_glob):
-            import matplotlib.pyplot as plt
-            fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
-            ax1.imshow(np.log10(np.abs(mat_mpi)))
-            ax2.imshow(np.log10(np.abs(mat_glob)))
-            ax3.imshow(np.log10(np.abs(mat_mpi - mat_glob)))
-            plt.show()
-        assert (np.allclose(mat_mpi, mat_glob))
+        assert np.allclose(mat_mpi, mat_glob)
 
 
 def test_identity_kron_mat():
