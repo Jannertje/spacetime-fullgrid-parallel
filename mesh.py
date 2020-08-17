@@ -16,24 +16,13 @@ def construct_3d_cube_mesh(nrefines=1):
 def construct_2d_square_mesh(nrefines=1):
     from netgen.geom2d import SplineGeometry
     geo = SplineGeometry()
-    geo.AddRectangle((0, 0), (1, 1), bcs=["b", "r", "t", "l"], leftdomain=1)
-    mesh = Mesh(geo.GenerateMesh(maxh=0.4))
+    geo.AddRectangle((0, 0), (1, 1))
+    ngmesh = geo.GenerateMesh()
+    ngmesh.Refine()
+    mesh = Mesh(ngmesh)
     for _ in range(nrefines):
-        for el in mesh.Elements():
-            mesh.SetRefinementFlag(el, True)
         mesh.Refine()
-    return mesh, "b|r|t|l"
-
-
-#def construct_2d_square_mesh(nrefines=1):
-#    from netgen.geom2d import SplineGeometry
-#    geo = SplineGeometry()
-#    geo.AddRectangle((0, 0), (1, 1))
-#    ngmesh = geo.GenerateMesh()
-#    for _ in range(nrefines):
-#        ngmesh.Refine()
-#    mesh = Mesh(ngmesh)
-#    return mesh, "default"
+    return mesh, "default"
 
 
 def construct_3d_shaft_mesh(nrefines=0):

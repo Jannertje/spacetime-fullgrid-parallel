@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 
 import numpy as np
 import pyamg
@@ -37,20 +38,25 @@ def PyAMG(A):
 
 class HeatEquationMPI:
     def __init__(self,
-                 refines=2,
+                 J_space=2,
+                 J_time=None,
                  precond='multigrid',
                  order=1,
                  wavelettransform='mat'):
         start_time = MPI.Wtime()
+        if J_time is None:
+            J_time = J_space
 
-        mesh_space, bc_space, mesh_time, data, fn = square(nrefines=refines)
+        mesh_space, bc_space, mesh_time, data, fn = square(J_space=J_space,
+                                                           J_time=J_time)
         X = KronFES(H1(mesh_time, order=order),
                     H1(mesh_space, order=order, dirichlet=bc_space))
         self.N = len(X.time.fd)
         self.M = len(X.space.fd)
 
         # --- TIME ---
-        self.J = refines
+        self.J_time = J_time
+        self.J_space = J_space
         self.A_t = BilForm(
             X.time,
             bilform_lambda=lambda u, v: grad(u) * grad(v) * dx).assemble()
@@ -82,7 +88,7 @@ class HeatEquationMPI:
         # --- Preconditioner on X ---
         self.C_j = []
         self.alpha = 0.5
-        for j in range(self.J + 1):
+        for j in range(self.J_time + 1):
             bf = BilForm(X.space,
                          bilform_lambda=lambda u, v:
                          (2**j * u * v + self.alpha * grad(u) * grad(v)) * dx)
@@ -97,7 +103,7 @@ class HeatEquationMPI:
 
         self.CAC_j = [
             CompositeLinOp([self.C_j[j], self.A_x, self.C_j[j]])
-            for j in range(self.J + 1)
+            for j in range(self.J_time + 1)
         ]
 
         # -- MPI objects --
@@ -115,16 +121,17 @@ class HeatEquationMPI:
             [self.A_MKM, self.L_MKA, self.LT_AKM, self.M_AKA, self.G_M])
 
         if wavelettransform == 'mat':
-            self.W_t = WaveletTransformOp(self.J)
+            self.W_t = WaveletTransformOp(self.J_time)
             self.W = MatKronIdentityMPI(self.W_t, self.M)
             self.WT = MatKronIdentityMPI(self.W_t.H, self.M)
         elif wavelettransform == 'interleaved':
-            self.W_t = WaveletTransformOp(self.J, interleaved=True)
+            self.W_t = WaveletTransformOp(self.J_time, interleaved=True)
             self.W = MatKronIdentityMPI(self.W_t, self.M)
             self.WT = MatKronIdentityMPI(self.W_t.H, self.M)
         elif wavelettransform == 'matfree':
-            self.W = WaveletTransformKronIdentityMPI(self.J, self.M)
-            self.WT = TransposedWaveletTransformKronIdentityMPI(self.J, self.M)
+            self.W = WaveletTransformKronIdentityMPI(self.J_time, self.M)
+            self.WT = TransposedWaveletTransformKronIdentityMPI(
+                self.J_time, self.M)
         self.P = BlockDiagMPI([self.CAC_j[j] for j in self.W.levels])
 
         self.WT_S_W = CompositeMPI([self.WT, self.S, self.W])
@@ -153,41 +160,54 @@ if __name__ == "__main__":
     parser.add_argument('--precond',
                         default='direct',
                         help='type of preconditioner')
+    parser.add_argument('--J_time',
+                        type=int,
+                        default=7,
+                        help='number of time refines')
+    parser.add_argument('--J_space',
+                        type=int,
+                        default=7,
+                        help='number of space refines')
 
     args = parser.parse_args()
     precond = args.precond
+    J_time = args.J_time
+    J_space = args.J_space
 
     ngsglobals.msg_level = 0
     rank = MPI.COMM_WORLD.Get_rank()
     size = MPI.COMM_WORLD.Get_size()
-    for refines in range(2, 12):
-        if size > 2**refines + 1:
-            continue
+    if size > 2**J_time + 1:
+        print('Too many MPI processors!')
+        sys.exit('1')
 
-        MPI.COMM_WORLD.Barrier()
-        heat_eq_mpi = HeatEquationMPI(refines, precond=precond)
+    MPI.COMM_WORLD.Barrier()
+    heat_eq_mpi = HeatEquationMPI(J_space=J_space,
+                                  J_time=J_time,
+                                  precond=precond)
+    if rank == 0:
+        print('\n\nCreating mesh with {} time refines and {} space refines.'.
+              format(J_time, J_space))
+        print('MPI tasks: ', size)
+        print('Preconditioner: ', precond)
+        print('N = {}. M = {}.'.format(heat_eq_mpi.N, heat_eq_mpi.M))
+        print('Constructed bilinear forms in {} s.'.format(
+            heat_eq_mpi.setup_time))
+        print('Total memory: {}mb'.format(mem()))
+
+    # Solve.
+    def cb(w, residual, k):
         if rank == 0:
-            print('\n\nCreating mesh with {} refines.'.format(refines))
-            print('MPI tasks: ', size)
-            print('Preconditioner: ', precond)
-            print('N = {}. M = {}.'.format(heat_eq_mpi.N, heat_eq_mpi.M))
-            print('Constructed bilinear forms in {} s.'.format(
-                heat_eq_mpi.setup_time))
-            print('Total memory: {}mb'.format(mem()))
+            print('.', end='', flush=True)
 
-        # Solve.
-        def cb(w, residual, k):
-            if rank == 0:
-                print('.', end='', flush=True)
+    solve_time = MPI.Wtime()
+    u_mpi_P, iters = PCG(heat_eq_mpi.WT_S_W,
+                         heat_eq_mpi.P,
+                         heat_eq_mpi.rhs,
+                         callback=cb)
 
-        solve_time = MPI.Wtime()
-        u_mpi_P, iters = PCG(heat_eq_mpi.WT_S_W,
-                             heat_eq_mpi.P,
-                             heat_eq_mpi.rhs,
-                             callback=cb)
-
-        if rank == 0:
-            print('')
-            print('Completed in {} PCG steps.'.format(iters))
-            print('Total solve time: {}s.'.format(MPI.Wtime() - solve_time))
-            heat_eq_mpi.print_time_per_apply()
+    if rank == 0:
+        print('')
+        print('Completed in {} PCG steps.'.format(iters))
+        print('Total solve time: {}s.'.format(MPI.Wtime() - solve_time))
+        heat_eq_mpi.print_time_per_apply()
