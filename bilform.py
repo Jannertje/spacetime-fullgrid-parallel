@@ -1,8 +1,8 @@
 import numpy as np
 import scipy.sparse as sp
-from ngsolve import BilinearForm, Preconditioner
+from ngsolve import BilinearForm, Preconditioner, dx, grad
 
-from linop import *
+from linop import AsLinearOperator, BlockDiagLinOp, CompositeLinOp, KronLinOp
 from wavelets import WaveletTransformMat
 
 

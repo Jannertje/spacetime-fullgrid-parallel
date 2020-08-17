@@ -1,4 +1,4 @@
-from ngsolve import Draw, Mesh, mpi_world
+from ngsolve import Mesh
 
 
 def construct_3d_cube_mesh(nrefines=1):
