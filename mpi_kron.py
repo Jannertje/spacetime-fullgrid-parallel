@@ -203,6 +203,8 @@ class MatKronIdentityMPI(LinearOperatorMPI):
         M = dofs_space
         assert (N == K)
         self.mat_time = mat_time
+        if hasattr(mat_time, 'levels'):
+            self.levels = mat_time.levels
         super().__init__(N, M)
 
     def _matvec(self, vec_in, vec_out):

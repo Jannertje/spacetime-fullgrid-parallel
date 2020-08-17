@@ -2,22 +2,23 @@ import argparse
 import os
 
 import numpy as np
-import psutil
 import pyamg
-from mpi4py import MPI
 from ngsolve import H1, InnerProduct, Preconditioner, ds, dx, grad, ngsglobals
 from scipy.sparse.linalg.interface import LinearOperator
 
+import psutil
 from bilform import BilForm
 from fespace import KronFES
 from linalg import PCG
 from linform import LinForm
 from linop import AsLinearOperator, CompositeLinOp
+from mpi4py import MPI
 from mpi_kron import (BlockDiagMPI, CompositeMPI, MatKronIdentityMPI, SumMPI,
                       TridiagKronMatMPI)
 from mpi_vector import KronVectorMPI
 from problem import square
-from wavelets import WaveletTransformOp
+from wavelets import (TransposedWaveletTransformKronIdentityMPI,
+                      WaveletTransformKronIdentityMPI, WaveletTransformOp)
 
 
 def mem():
@@ -35,7 +36,11 @@ def PyAMG(A):
 
 
 class HeatEquationMPI:
-    def __init__(self, refines=2, precond='multigrid', order=1):
+    def __init__(self,
+                 refines=2,
+                 precond='multigrid',
+                 order=1,
+                 wavelettransform='mat'):
         start_time = MPI.Wtime()
 
         mesh_space, bc_space, mesh_time, data, fn = square(nrefines=refines)
@@ -56,7 +61,6 @@ class HeatEquationMPI:
         self.G_t = BilForm(
             X.time,
             bilform_lambda=lambda u, v: u * v * ds('start')).assemble()
-        self.W_t = WaveletTransformOp(self.J)
 
         # --- SPACE ---
         self.M_x = BilForm(X.space,
@@ -110,10 +114,18 @@ class HeatEquationMPI:
         self.S = SumMPI(
             [self.A_MKM, self.L_MKA, self.LT_AKM, self.M_AKA, self.G_M])
 
-        self.P = BlockDiagMPI([self.CAC_j[j] for j in self.W_t.levels])
-
-        self.W = MatKronIdentityMPI(self.W_t, self.M)
-        self.WT = MatKronIdentityMPI(self.W_t.H, self.M)
+        if wavelettransform == 'mat':
+            self.W_t = WaveletTransformOp(self.J)
+            self.W = MatKronIdentityMPI(self.W_t, self.M)
+            self.WT = MatKronIdentityMPI(self.W_t.H, self.M)
+        elif wavelettransform == 'interleaved':
+            self.W_t = WaveletTransformOp(self.J, interleaved=True)
+            self.W = MatKronIdentityMPI(self.W_t, self.M)
+            self.WT = MatKronIdentityMPI(self.W_t.H, self.M)
+        elif wavelettransform == 'matfree':
+            self.W = WaveletTransformKronIdentityMPI(self.J, self.M)
+            self.WT = TransposedWaveletTransformKronIdentityMPI(self.J, self.M)
+        self.P = BlockDiagMPI([self.CAC_j[j] for j in self.W.levels])
 
         self.WT_S_W = CompositeMPI([self.WT, self.S, self.W])
 
