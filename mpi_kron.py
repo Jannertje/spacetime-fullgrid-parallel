@@ -227,7 +227,7 @@ class MatKronIdentityMPI(LinearOperatorMPI):
 class SparseKronIdentityMPI(LinearOperatorMPI):
     """ Requires a square matrix in CSR with symmetric sparsity pattern. """
     def __init__(self, mat_time, dofs_space, add_identity=False):
-        assert (scipy.sparse.isspmatrix_csr(mat_time))
+        assert scipy.sparse.isspmatrix_csr(mat_time)
         N, K = mat_time.shape
         M = dofs_space
         assert (N == K)
