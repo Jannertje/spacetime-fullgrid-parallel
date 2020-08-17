@@ -148,8 +148,7 @@ def linop_test_apply_MPI(linop_mpi, linop):
 
     x_glob = None
     if x_mpi.rank == 0:
-        x_glob = np.zeros(linop_mpi.N * linop_mpi.M)
-        x_glob[0] = 1
+        x_glob = np.random.rand(linop_mpi.N * linop_mpi.M)
         y_glob = linop @ x_glob
 
     x_mpi.scatter(x_glob)
@@ -161,15 +160,15 @@ def linop_test_apply_MPI(linop_mpi, linop):
 
 
 def test_demo():
-    refines = 3
+    refines = 2
     heat_eq_mpi = HeatEquationMPI(refines, precond='direct')
 
     _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines), precond='direct')
     linop_test_MPI(heat_eq_mpi.WT_S_W, as_matrix(WT @ S @ W))
     linop_test_MPI(heat_eq_mpi.P, as_matrix(P))
 
-    for refines in range(3, 7):
-        heat_eq_mpi = HeatEquationMPI(refines)
+    for refines in range(2, 6):
+        heat_eq_mpi = HeatEquationMPI(refines, precond='direct')
         linearity_test_MPI(heat_eq_mpi.S)
         linearity_test_MPI(heat_eq_mpi.W)
         linearity_test_MPI(heat_eq_mpi.WT)
@@ -186,7 +185,7 @@ def test_demo():
 
 
 def test_preconditioner():
-    refines = 4
+    refines = 3
     heat_eq_mpi = HeatEquationMPI(refines, precond='direct')
     N = heat_eq_mpi.N
     M = heat_eq_mpi.M
