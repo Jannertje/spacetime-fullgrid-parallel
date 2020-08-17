@@ -208,4 +208,4 @@ def test_preconditioner():
         _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines),
                                                 precond='direct')
         lanczos_demo = Lanczos(WT @ S @ W, P)
-        assert abs(lanczos_mpi.cond() - lanczos_demo.cond()) < 0.2
+        assert abs(lanczos_mpi.cond() - lanczos_demo.cond()) < 0.3
