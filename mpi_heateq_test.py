@@ -101,45 +101,46 @@ def test_S_apply():
 
 def test_solve():
     refines = 2
-    heat_eq_mpi = HeatEquationMPI(refines, precond='direct')
-    N = heat_eq_mpi.N
-    M = heat_eq_mpi.M
+    for wavelettransform in ['mat', 'interleaved', 'matfree']:
+        heat_eq_mpi = HeatEquationMPI(refines, precond='direct')
+        N = heat_eq_mpi.N
+        M = heat_eq_mpi.M
 
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
 
-    # Solve using demo on root.
-    u_glob_mpi = None
-    f_glob_mpi = None
-    if rank == 0:
-        u_glob_mpi = np.empty(N * M)
-        f_glob_mpi = np.empty(N * M)
-
-        # Extract f_glob from demo.
-        _, _, _, S, _, _, _, _, f_glob_demo, _, _ = demo(*square(refines),
-                                                         precond='direct')
-
-        # Solve on root.
-        u_glob_demo, _ = PCG(S, scipy.sparse.identity(N * M), f_glob_demo)
-
-    # Solve using mpi.
-    def cb(w, residual, k):
+        # Solve using demo on root.
+        u_glob_mpi = None
+        f_glob_mpi = None
         if rank == 0:
-            print('.', end='', flush=True)
+            u_glob_mpi = np.empty(N * M)
+            f_glob_mpi = np.empty(N * M)
 
-    u_mpi, _ = PCG(heat_eq_mpi.S,
-                   IdentityMPI(N, M),
-                   heat_eq_mpi.rhs,
-                   callback=cb)
+            # Extract f_glob from demo.
+            _, _, _, S, _, _, _, _, f_glob_demo, _, _ = demo(*square(refines),
+                                                             precond='direct')
 
-    # Gather the results on root.
-    u_mpi.gather(u_glob_mpi)
+            # Solve on root.
+            u_glob_demo, _ = PCG(S, scipy.sparse.identity(N * M), f_glob_demo)
 
-    # Compare to demo.
-    heat_eq_mpi.rhs.gather(f_glob_mpi)
-    if rank == 0:
-        assert (np.allclose(f_glob_demo, f_glob_mpi))
-        assert (np.allclose(u_glob_demo, u_glob_mpi))
+        # Solve using mpi.
+        def cb(w, residual, k):
+            if rank == 0:
+                print('.', end='', flush=True)
+
+        u_mpi, _ = PCG(heat_eq_mpi.S,
+                       IdentityMPI(N, M),
+                       heat_eq_mpi.rhs,
+                       callback=cb)
+
+        # Gather the results on root.
+        u_mpi.gather(u_glob_mpi)
+
+        # Compare to demo.
+        heat_eq_mpi.rhs.gather(f_glob_mpi)
+        if rank == 0:
+            assert (np.allclose(f_glob_demo, f_glob_mpi))
+            assert (np.allclose(u_glob_demo, u_glob_mpi))
 
 
 def linop_test_apply_MPI(linop_mpi, linop):
