@@ -18,9 +18,10 @@ def construct_2d_square_mesh(nrefines=1):
     geo = SplineGeometry()
     geo.AddRectangle((0, 0), (1, 1))
     ngmesh = geo.GenerateMesh()
-    for _ in range(nrefines):
-        ngmesh.Refine()
+    ngmesh.Refine()
     mesh = Mesh(ngmesh)
+    for _ in range(nrefines):
+        mesh.Refine()
     return mesh, "default"
 
 

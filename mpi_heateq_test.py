@@ -5,13 +5,34 @@ from mpi4py import MPI
 from demo import demo
 from lanczos import Lanczos
 from linalg import PCG
+from linop import AsLinearOperator, CompositeLinOp
 from mpi_heateq import HeatEquationMPI
-from mpi_kron import IdentityMPI, as_matrix
+from mpi_kron import (BlockDiagMPI, CompositeMPI, IdentityMPI,
+                      MatKronIdentityMPI, SumMPI, TridiagKronMatMPI, as_matrix)
 from mpi_kron_test import linearity_test_MPI, linop_test_MPI
 from mpi_vector import KronVectorMPI
 from problem import square
 
 refines = 2
+
+
+def test_multigrid():
+    # Gather the space/time stiffness matrices.
+    refines = 2
+    heat_eq_mpi = HeatEquationMPI(refines, precond='multigrid')
+    M = heat_eq_mpi.M
+
+    for linop in [
+            heat_eq_mpi.Kinv_x,
+            CompositeLinOp([heat_eq_mpi.Kinv_x, heat_eq_mpi.M_x]),
+            CompositeLinOp([heat_eq_mpi.Kinv_x, heat_eq_mpi.A_x])
+    ]:
+        x = np.random.rand(M)
+        mat = as_matrix(linop)
+
+        y_matfree = linop @ x
+        y_matvec = mat @ x
+        assert np.allclose(y_matfree, y_matvec)
 
 
 def test_bilforms():
@@ -32,7 +53,7 @@ def test_bilforms():
         # Check that it is corret.
         x_mpi.gather(x_glob)
         if comm.Get_rank() == 0:
-            assert (np.allclose(y_glob, x_glob))
+            assert np.allclose(y_glob, x_glob)
 
     # Gather the space/time stiffness matrices.
     refines = 2
@@ -62,6 +83,9 @@ def test_S_apply():
 
         # Compare to demo
         _, _, _, S, _, _, _, _, _, _, _ = demo(*square(refines))
+        print('N =', N, 'M =', M)
+        print('S (from demo).shape =', S.shape)
+        print('x_glob.shape =', x_glob.shape)
         y_glob = S @ x_glob
 
         # Compare to np.kron
