@@ -1,6 +1,5 @@
 import numpy as np
 import scipy.sparse as sp
-from ngsolve import *
 from scipy.sparse.linalg import LinearOperator
 
 
