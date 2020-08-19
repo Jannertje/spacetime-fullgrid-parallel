@@ -197,7 +197,6 @@ if __name__ == "__main__":
             heat_eq_mpi.mem_after_precond))
         print('Memory after construction: {}mb.'.format(mem()))
         print('')
-    sys.exit(0)
 
     # Solve.
     def cb(w, residual, k):
