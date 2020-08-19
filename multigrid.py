@@ -89,11 +89,12 @@ class PETScSMoother:
         self.mat_petsc = PETSc.Mat().createAIJWithArrays(size=mat.shape,
                                                          csr=(mat.indptr,
                                                               mat.indices,
-                                                              mat.data))
+                                                              mat.data),
+                                                         comm=PETSc.COMM_SELF)
 
     def PreSmooth(self, u, f):
-        f_petsc = PETSc.Vec().createWithArray(f)
-        u_petsc = PETSc.Vec().createWithArray(u)
+        f_petsc = PETSc.Vec().createWithArray(f, comm=PETSc.COMM_SELF)
+        u_petsc = PETSc.Vec().createWithArray(u, comm=PETSc.COMM_SELF)
         self.mat_petsc.SOR(f_petsc,
                            u_petsc,
                            its=self.its,
@@ -101,8 +102,8 @@ class PETScSMoother:
         return u
 
     def PostSmooth(self, u, f):
-        f_petsc = PETSc.Vec().createWithArray(f)
-        u_petsc = PETSc.Vec().createWithArray(u)
+        f_petsc = PETSc.Vec().createWithArray(f, comm=PETSc.COMM_SELF)
+        u_petsc = PETSc.Vec().createWithArray(u, comm=PETSc.COMM_SELF)
         self.mat_petsc.SOR(f_petsc,
                            u_petsc,
                            its=self.its,
