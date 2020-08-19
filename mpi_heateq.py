@@ -7,6 +7,7 @@ import psutil
 import pyamg
 from mpi4py import MPI
 from ngsolve import H1, InnerProduct, Preconditioner, ds, dx, grad, ngsglobals
+from multigrid import MeshHierarchy, MultiGrid
 from scipy.sparse.linalg.interface import LinearOperator
 
 from bilform import BilForm
@@ -37,6 +38,8 @@ def PyAMG(A):
 
 class HeatEquationMPI:
     def __init__(self, J_space=2, J_time=None, precond='multigrid', order=1):
+        precond_ngsolve = precond != 'mg' and precond != 'pyamg'
+
         start_time = MPI.Wtime()
         if J_time is None:
             J_time = J_space
@@ -72,14 +75,18 @@ class HeatEquationMPI:
         A_x = BilForm(
             X.space,
             bilform_lambda=lambda u, v: InnerProduct(grad(u), grad(v)) * dx)
-        if precond != 'pyamg':
+        if precond_ngsolve:
             Kinv_x_pc = Preconditioner(A_x.bf, precond)
+        elif precond == 'mg':
+            hierarchy = MeshHierarchy(X.space)
         self.A_x = A_x.assemble()
 
-        if precond != 'pyamg':
+        if precond_ngsolve:
             self.Kinv_x = AsLinearOperator(Kinv_x_pc.mat, X.space.fd)
-        else:
+        elif precond == 'pyamg':
             self.Kinv_x = PyAMG(self.A_x)
+        else:
+            self.Kinv_x = MultiGrid(self.A_x, hierarchy)
         self.mem_after_space = mem()
 
         # --- Preconditioner on X ---
@@ -89,14 +96,16 @@ class HeatEquationMPI:
             bf = BilForm(X.space,
                          bilform_lambda=lambda u, v:
                          (2**j * u * v + self.alpha * grad(u) * grad(v)) * dx)
-            if precond != 'pyamg':
+            if precond_ngsolve:
                 C = Preconditioner(bf.bf, precond)
             bf.bf.Assemble()
 
-            if precond != 'pyamg':
+            if precond_ngsolve:
                 self.C_j.append(AsLinearOperator(C.mat, X.space.fd))
-            else:
+            elif precond == 'pyamg':
                 self.C_j.append(PyAMG(bf.assemble()))
+            else:
+                self.C_j.append(MultiGrid(bf.assemble(), hierarchy))
 
         self.CAC_j = [
             CompositeLinOp([self.C_j[j], self.A_x, self.C_j[j]])
@@ -188,6 +197,7 @@ if __name__ == "__main__":
             heat_eq_mpi.mem_after_precond))
         print('Memory after construction: {}mb.'.format(mem()))
         print('')
+    sys.exit(0)
 
     # Solve.
     def cb(w, residual, k):
