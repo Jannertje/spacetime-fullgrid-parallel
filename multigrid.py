@@ -84,7 +84,8 @@ class Smoother:
 
 
 class PETScSMoother:
-    def __init__(self, mat):
+    def __init__(self, mat, its):
+        self.its = its
         self.mat_petsc = PETSc.Mat().createAIJWithArrays(size=mat.shape,
                                                          csr=(mat.indptr,
                                                               mat.indices,
@@ -95,6 +96,7 @@ class PETScSMoother:
         u_petsc = PETSc.Vec().createWithArray(u)
         self.mat_petsc.SOR(f_petsc,
                            u_petsc,
+                           its=self.its,
                            sortype=self.mat_petsc.SORType.FORWARD_SWEEP)
         return u
 
@@ -103,6 +105,7 @@ class PETScSMoother:
         u_petsc = PETSc.Vec().createWithArray(u)
         self.mat_petsc.SOR(f_petsc,
                            u_petsc,
+                           its=self.its,
                            sortype=self.mat_petsc.SORType.BACKWARD_SWEEP)
         return u
 
@@ -120,7 +123,7 @@ class MultiGrid(LinearOperator):
 
         self.smoothers = [None]
         for j in range(1, hierarchy.J + 1):
-            self.smoothers.append(PETScSMoother(self.mats[j]))
+            self.smoothers.append(PETScSMoother(self.mats[j], its=smoothsteps))
 
         # Solve on the coarsest mesh
         self.coarse_solver = splu(
@@ -136,15 +139,13 @@ class MultiGrid(LinearOperator):
         if j == 0:
             u_j = self.coarse_solver.solve(f_j)
         else:
-            for _ in range(self.smoothsteps):
-                self.smoothers[j].PreSmooth(u_j, f_j)
+            self.smoothers[j].PreSmooth(u_j, f_j)
 
             d_cj = self.hierarchy.R_mats[j - 1] @ (self.mats[j] @ u_j - f_j)
             u_cj = self.MGM(j - 1, np.zeros(self.mats[j - 1].shape[0]), d_cj)
             u_j -= self.hierarchy.P_mats[j - 1] @ u_cj
 
-            for _ in range(self.smoothsteps):
-                self.smoothers[j].PostSmooth(u_j, f_j)
+            self.smoothers[j].PostSmooth(u_j, f_j)
 
         return u_j
 
@@ -156,7 +157,7 @@ class MultiGrid(LinearOperator):
 
 
 if __name__ == "__main__":
-    mesh, bc = construct_2d_square_mesh(1)
+    mesh, bc = construct_2d_square_mesh(6)
     fes = H1(mesh, order=1, dirichlet=bc)
     A_bf = BilForm(
         fes, bilform_lambda=lambda u, v: InnerProduct(grad(u), grad(v)) * dx)
