@@ -28,6 +28,7 @@ class BilForm:
         self.mat = mat[self.fes_out.FreeDofs(), :].tocsc()[:,
                                                            self.fes_in.
                                                            FreeDofs()].tocsr()
+        self.mat.eliminate_zeros()
         return self.mat
 
 

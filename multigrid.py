@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.sparse.linalg import splu, LinearOperator
+from petsc4py import PETSc
 import scipy.sparse
 from netgen.csg import unit_cube
 from netgen.geom2d import unit_square
@@ -82,6 +83,30 @@ class Smoother:
         return u
 
 
+class PETScSMoother:
+    def __init__(self, mat):
+        self.mat_petsc = PETSc.Mat().createAIJWithArrays(size=mat.shape,
+                                                         csr=(mat.indptr,
+                                                              mat.indices,
+                                                              mat.data))
+
+    def PreSmooth(self, u, f):
+        f_petsc = PETSc.Vec().createWithArray(f)
+        u_petsc = PETSc.Vec().createWithArray(u)
+        self.mat_petsc.SOR(f_petsc,
+                           u_petsc,
+                           sortype=self.mat_petsc.SORType.FORWARD_SWEEP)
+        return u
+
+    def PostSmooth(self, u, f):
+        f_petsc = PETSc.Vec().createWithArray(f)
+        u_petsc = PETSc.Vec().createWithArray(u)
+        self.mat_petsc.SOR(f_petsc,
+                           u_petsc,
+                           sortype=self.mat_petsc.SORType.BACKWARD_SWEEP)
+        return u
+
+
 class MultiGrid(LinearOperator):
     def __init__(self, mat, hierarchy, smoothsteps=1, vcycles=1):
         super().__init__(shape=mat.shape, dtype=np.float64)
@@ -95,7 +120,7 @@ class MultiGrid(LinearOperator):
 
         self.smoothers = [None]
         for j in range(1, hierarchy.J + 1):
-            self.smoothers.append(Smoother(self.mats[j]))
+            self.smoothers.append(PETScSMoother(self.mats[j]))
 
         # Solve on the coarsest mesh
         self.coarse_solver = splu(
@@ -131,36 +156,21 @@ class MultiGrid(LinearOperator):
 
 
 if __name__ == "__main__":
-    mesh_2, bc = construct_2d_square_mesh(2)
-    fes_2 = H1(mesh_2, order=1, dirichlet=bc)
-    A_2_bf = BilForm(
-        fes_2, bilform_lambda=lambda u, v: InnerProduct(grad(u), grad(v)) * dx)
-    A_2 = A_2_bf.assemble()
+    mesh, bc = construct_2d_square_mesh(1)
+    fes = H1(mesh, order=1, dirichlet=bc)
+    A_bf = BilForm(
+        fes, bilform_lambda=lambda u, v: InnerProduct(grad(u), grad(v)) * dx)
+    A = A_bf.assemble()
+    A_petsc = PETSc.Mat().createAIJWithArrays(size=A.shape,
+                                              csr=(A.indptr, A.indices,
+                                                   A.data))
+    hierarch = MeshHierarchy(fes)
 
-    A_1 = BilForm(H1(construct_2d_square_mesh(1)[0],
-                     order=1,
-                     dirichlet="default"),
-                  bilform_lambda=lambda u, v: InnerProduct(grad(u), grad(v)) *
-                  dx).assemble()
-
-    A_0 = BilForm(H1(construct_2d_square_mesh(0)[0],
-                     order=1,
-                     dirichlet="default"),
-                  bilform_lambda=lambda u, v: InnerProduct(grad(u), grad(v)) *
-                  dx).assemble()
-    print('A_0', A_0.shape)
-    print('A_1', A_1.shape)
-    print('A_2', A_2.shape)
-
-    hierarch = MeshHierarchy(fes_2)
-    A_mats = [A_0, A_1, A_2]
-    for j in range(hierarch.J):
-        assert np.allclose(
-            as_matrix(hierarch.R_mats[j] @ A_mats[j + 1] @ hierarch.P_mats[j]),
-            as_matrix(A_mats[j]))
-
-    for smoothsteps in [1, 2, 3]:
-        for vcycles in [1, 2, 3]:
-            mg = MultiGrid(A_2, hierarch, smoothsteps=2, vcycles=1)
+    for smoothsteps in [1]:
+        for vcycles in [1]:
+            mg = MultiGrid(A,
+                           hierarch,
+                           smoothsteps=smoothsteps,
+                           vcycles=vcycles)
             print('smoothsteps={} vcycles={} lanczos:{}'.format(
-                smoothsteps, vcycles, Lanczos(A_2, mg)))
+                smoothsteps, vcycles, Lanczos(A, mg)))

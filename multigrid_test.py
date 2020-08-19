@@ -10,7 +10,7 @@ from bilform import BilForm
 from lanczos import Lanczos
 from linop import AsLinearOperator
 from mesh import construct_2d_square_mesh
-from multigrid import MeshHierarchy, Smoother, MultiGrid
+from multigrid import MeshHierarchy, PETScSMoother, Smoother, MultiGrid
 from mpi_kron import as_matrix
 
 ngsglobals.msg_level = 0
@@ -49,19 +49,19 @@ def test_smoother():
     A = BilForm(fes,
                 bilform_lambda=lambda u, v: InnerProduct(grad(u), grad(v)) * dx
                 ).assemble()
-    smoother = Smoother(A)
+    for smoother in [Smoother(A)]:
 
-    x = np.random.rand(A.shape[1])
-    y = A @ x
+        x = np.random.rand(A.shape[1])
+        y = A @ x
 
-    x_pre = np.zeros(A.shape[1])
-    x_post = np.zeros(A.shape[1])
-    for _ in range(150):
-        smoother.PreSmooth(x_pre, y)
-        smoother.PostSmooth(x_post, y)
+        x_pre = np.zeros(A.shape[1])
+        x_post = np.zeros(A.shape[1])
+        for _ in range(150):
+            smoother.PreSmooth(x_pre, y)
+            smoother.PostSmooth(x_post, y)
 
-    assert np.allclose(x_post, x)
-    assert np.allclose(x_pre, x)
+        assert np.allclose(x_post, x)
+        assert np.allclose(x_pre, x)
 
 
 def test_multigrid_coarse():
