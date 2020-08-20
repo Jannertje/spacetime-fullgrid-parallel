@@ -15,7 +15,8 @@ from linop import AsLinearOperator, CompositeLinOp
 from mpi_kron import (BlockDiagMPI, CompositeMPI, MatKronIdentityMPI, SumMPI,
                       TridiagKronMatMPI)
 from mpi_vector import KronVectorMPI
-from wavelets import WaveletTransformOp
+from wavelets import (TransposedWaveletTransformKronIdentityMPI,
+                      WaveletTransformKronIdentityMPI, WaveletTransformOp)
 
 
 def mem():
