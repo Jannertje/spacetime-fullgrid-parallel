@@ -241,7 +241,6 @@ if __name__ == "__main__":
     u_mpi_P, iters = PCG(heat_eq_mpi.WT_S_W,
                          heat_eq_mpi.P,
                          heat_eq_mpi.rhs,
-                         kmax=5,
                          callback=cb)
 
     MPI.COMM_WORLD.Barrier()
