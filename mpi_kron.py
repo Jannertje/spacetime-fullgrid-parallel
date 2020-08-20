@@ -1,4 +1,5 @@
 import numpy as np
+import traceback
 import scipy.sparse
 
 from mpi4py import MPI
@@ -11,9 +12,10 @@ def as_matrix(operator):
 
 
 class LinearOperatorMPI:
-    def __init__(self, dofs_time, dofs_space):
-        self.N = dofs_time
-        self.M = dofs_space
+    def __init__(self, dofs_distr):
+        self.dofs_distr = dofs_distr
+        self.N = dofs_distr.N
+        self.M = dofs_distr.M
         self.num_applies = 0
         self.time_applies = 0
         self.time_communication = 0
@@ -22,7 +24,7 @@ class LinearOperatorMPI:
         assert isinstance(x, KronVectorMPI)
         start_time = MPI.Wtime()
 
-        y = self._matvec(x, KronVectorMPI(x.comm, x.N, x.M))
+        y = self._matvec(x, KronVectorMPI(self.dofs_distr))
 
         self.num_applies += 1
         self.time_applies += MPI.Wtime() - start_time
@@ -36,7 +38,7 @@ class LinearOperatorMPI:
         print('Expensive computation!')
         I = np.eye(self.N * self.M)
         comm = MPI.COMM_WORLD
-        x_mpi = KronVectorMPI(comm, self.N, self.M)
+        x_mpi = KronVectorMPI(self.dofs_distr)
         result = None
         x_glob = None
         if x_mpi.rank == 0:
@@ -57,8 +59,8 @@ class LinearOperatorMPI:
 
 
 class IdentityMPI(LinearOperatorMPI):
-    def __init__(self, dofs_time, dofs_space):
-        super().__init__(dofs_time, dofs_space)
+    def __init__(self, dofs_distr):
+        super().__init__(dofs_distr)
 
     def _matvec(self, vec_in, vec_out):
         vec_out.X_loc[:] = vec_in.X_loc
@@ -66,11 +68,11 @@ class IdentityMPI(LinearOperatorMPI):
 
 
 class SumMPI(LinearOperatorMPI):
-    def __init__(self, linops):
+    def __init__(self, dofs_distr, linops):
         assert all(isinstance(linop, LinearOperatorMPI) for linop in linops)
         N, M = linops[0].N, linops[0].M
         self.linops = linops
-        super().__init__(N, M)
+        super().__init__(dofs_distr)
 
     def _matvec(self, vec_in, vec_out):
         assert (vec_in is not vec_out)
@@ -87,12 +89,12 @@ class SumMPI(LinearOperatorMPI):
 
 
 class CompositeMPI(LinearOperatorMPI):
-    def __init__(self, linops):
+    def __init__(self, dofs_distr, linops):
         assert all(isinstance(linop, LinearOperatorMPI) for linop in linops)
         N, M = linops[0].N, linops[0].M
         assert all(linop.N == N and linop.M == M for linop in linops)
         self.linops = linops
-        super().__init__(N, M)
+        super().__init__(dofs_distr)
 
     def _matvec(self, vec_in, vec_out):
         assert (vec_in is not vec_out)
@@ -106,13 +108,13 @@ class CompositeMPI(LinearOperatorMPI):
 
 
 class BlockDiagMPI(LinearOperatorMPI):
-    def __init__(self, matrices_space):
+    def __init__(self, dofs_distr, matrices_space):
         N = len(matrices_space)
         M = matrices_space[0].shape[0]
         for mat in matrices_space:
             assert mat.shape == (M, M)
         self.matrices_space = matrices_space
-        super().__init__(N, M)
+        super().__init__(dofs_distr)
 
     def _matvec(self, vec_in, vec_out):
         assert (isinstance(vec_in, KronVectorMPI))
@@ -128,11 +130,11 @@ class BlockDiagMPI(LinearOperatorMPI):
 
 
 class IdentityKronMatMPI(LinearOperatorMPI):
-    def __init__(self, dofs_time, mat_space):
+    def __init__(self, dofs_distr, mat_space):
         M, L = mat_space.shape
         assert (M == L)
         self.mat_space = mat_space
-        super().__init__(dofs_time, M)
+        super().__init__(dofs_distr)
 
     def _matvec(self, vec_in, vec_out):
         assert (isinstance(vec_in, KronVectorMPI))
@@ -145,18 +147,26 @@ class IdentityKronMatMPI(LinearOperatorMPI):
 
 
 class TridiagKronIdentityMPI(LinearOperatorMPI):
-    def __init__(self, mat_time, dofs_space):
+    def __init__(self, dofs_distr, mat_time):
         assert (scipy.sparse.isspmatrix_csr(mat_time))
         N, K = mat_time.shape
-        M = dofs_space
+        M = dofs_distr.M
         assert (N == K)
-        self.mat_time = mat_time
         # Check that it is indeed bandwidthed
         for t, row in enumerate(mat_time):
             assert set(row.indices).issubset(
                 set(range(max(0, t - 1), min(t + 2, N))))
+        coo_mat = mat_time.tocoo()
 
-        super().__init__(N, M)
+        sliced_mat = list(
+            filter(lambda rdc: dofs_distr.t_begin <= rdc[0] < dofs_distr.t_end,
+                   zip(coo_mat.row, coo_mat.col, coo_mat.data)))
+        if sliced_mat:
+            self.row, self.col, self.data = zip(*sliced_mat)
+        else:
+            self.row = self.col = self.data = []
+
+        super().__init__(dofs_distr)
 
     def _matvec(self, vec_in, vec_out):
         assert (isinstance(vec_in, KronVectorMPI))
@@ -170,25 +180,24 @@ class TridiagKronIdentityMPI(LinearOperatorMPI):
         Y_loc = np.zeros(vec_out.X_loc.shape, dtype=np.float64)
 
         # for every processor, loop over its own timesteps
-        for t in range(vec_in.t_begin, vec_in.t_end):
-            row = self.mat_time[t, :]
-            for idx, coeff in zip(row.indices, row.data):
-                Y_loc[t - vec_out.t_begin, :] += coeff * X_loc_bdr[
-                    idx - vec_in.t_begin + 1]
+        for t, idx, coeff in zip(self.row, self.col, self.data):
+            Y_loc[t -
+                  vec_out.t_begin, :] += coeff * X_loc_bdr[idx -
+                                                           vec_in.t_begin + 1]
 
         vec_out.X_loc = Y_loc
         return vec_out
 
 
 class TridiagKronMatMPI(LinearOperatorMPI):
-    def __init__(self, mat_time, mat_space):
+    def __init__(self, dofs_distr, mat_time, mat_space):
         N = mat_time.shape[0]
         M = mat_space.shape[0]
-        super().__init__(N, M)
+        super().__init__(dofs_distr)
         self.mat_time = mat_time
         self.mat_space = mat_space
-        self.I_M = IdentityKronMatMPI(N, mat_space)
-        self.T_I = TridiagKronIdentityMPI(mat_time, M)
+        self.I_M = IdentityKronMatMPI(dofs_distr, mat_space)
+        self.T_I = TridiagKronIdentityMPI(dofs_distr, mat_time)
 
     def _matvec(self, vec_in, vec_out):
         self.I_M._matvec(vec_in, vec_out)
@@ -205,14 +214,14 @@ class MatKronIdentityMPI(LinearOperatorMPI):
     This applies a M kron I by swapping the rearanging the input vector.
     NOTE: Expensive in communication!.
     """
-    def __init__(self, mat_time, dofs_space):
+    def __init__(self, dofs_distr, mat_time):
         N, K = mat_time.shape
-        M = dofs_space
+        M = dofs_distr.N
         assert (N == K)
         self.mat_time = mat_time
         if hasattr(mat_time, 'levels'):
             self.levels = mat_time.levels
-        super().__init__(N, M)
+        super().__init__(dofs_distr)
 
     def _matvec(self, vec_in, vec_out):
         assert (isinstance(vec_in, KronVectorMPI))
@@ -227,7 +236,7 @@ class MatKronIdentityMPI(LinearOperatorMPI):
         vec_in_permuted.X_loc[:] = (self.mat_time @ vec_in_permuted.X_loc.T).T
 
         # Permute the vector back.
-        _, comm_time, vec_in_permuted.permute(vec_out)
+        _, comm_time = vec_in_permuted.permute(vec_out)
         self.time_communication += comm_time
 
         return vec_out
@@ -235,45 +244,42 @@ class MatKronIdentityMPI(LinearOperatorMPI):
 
 class SparseKronIdentityMPI(LinearOperatorMPI):
     """ Requires a square matrix in CSR with symmetric sparsity pattern. """
-    def __init__(self, mat_time, dofs_space, add_identity=False):
+    def __init__(self, dofs_distr, mat_time, add_identity=False):
+        super().__init__(dofs_distr)
         assert scipy.sparse.isspmatrix_csr(mat_time)
         N, K = mat_time.shape
-        M = dofs_space
+        M = dofs_distr.N
         assert (N == K)
-        self.mat_time = mat_time
-        self.comm_dofs = None
+        assert (mat_time.nnz)
         self.add_identity = add_identity
-        super().__init__(N, M)
+        coo_mat = mat_time.tocoo()
+        self.row, self.col, self.data = zip(*(
+            filter(lambda rdc: dofs_distr.t_begin <= rdc[0] < dofs_distr.t_end,
+                   zip(coo_mat.row, coo_mat.col, coo_mat.data))))
+
+        self.comm_dofs = sorted(
+            set((row, col) for row, col in zip(self.row, self.col)
+                if col < dofs_distr.t_begin or dofs_distr.t_end <= col))
 
     def _matvec(self, vec_in, vec_out):
         assert (isinstance(vec_in, KronVectorMPI))
         assert (self.N == vec_in.N and self.M == vec_in.M)
         assert (vec_in.X_loc.shape == vec_out.X_loc.shape)
 
-        if not self.comm_dofs:
-            comm_dofs = set()
-            for row in range(vec_in.t_begin, vec_in.t_end):
-                for col in self.mat_time[row, :].indices:
-                    if col < vec_in.t_begin or vec_in.t_end <= col:
-                        comm_dofs.add((row, col))
-            self.comm_dofs = sorted(comm_dofs)
-
         if len(self.comm_dofs):
             X_recv, comm_time = vec_in.communicate_dofs(self.comm_dofs)
             self.time_communication += comm_time
 
         # for every processor, loop over its own timesteps
-        for t in range(vec_in.t_begin, vec_in.t_end):
-            row = self.mat_time[t, :]
-            for idx, coeff in zip(row.indices, row.data):
-                t_ = t - vec_out.t_begin
-                idx_ = idx - vec_in.t_begin
-                if vec_in.t_begin <= idx < vec_in.t_end:
-                    # The data is in X_loc
-                    vec_out.X_loc[t_, :] += coeff * vec_in.X_loc[idx_]
-                else:
-                    # The data is in X_recv
-                    vec_out.X_loc[t_, :] += coeff * X_recv[idx]
+        for t, idx, coeff in zip(self.row, self.col, self.data):
+            t_ = t - vec_in.t_begin
+            idx_ = idx - vec_in.t_begin
+            if vec_in.t_begin <= idx < vec_in.t_end:
+                # The data is in X_loc
+                vec_out.X_loc[t_, :] += coeff * vec_in.X_loc[idx_]
+            else:
+                # The data is in X_recv
+                vec_out.X_loc[t_, :] += coeff * X_recv[idx]
 
         if self.add_identity:
             assert vec_out is not vec_in

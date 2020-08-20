@@ -9,7 +9,7 @@ def PCG(T, P, b, w0=None, kmax=100000, rtol=1e-5, callback=None):
 
     if w0 is None:
         if isinstance(b, KronVectorMPI):
-            w0 = KronVectorMPI(b.comm, b.N, b.M)
+            w0 = KronVectorMPI(b.dofs_distr)
         else:
             w0 = np.zeros(b.shape)
 

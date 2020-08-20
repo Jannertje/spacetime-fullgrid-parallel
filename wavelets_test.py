@@ -2,6 +2,7 @@ from math import sqrt
 
 import numpy as np
 
+from mpi_vector import KronVectorMPI, DofDistributionMPI
 from mpi4py import MPI
 from mpi_kron import as_matrix
 from wavelets import (LevelWaveletTransformOp,
@@ -67,9 +68,12 @@ def test_interleaved_wavelet_transform_works():
 
 def test_mpi_wavelet_transform_works():
     J = 4
+    N = 2**J + 1
+    M = 1
+    dofs_distr = DofDistributionMPI(MPI.COMM_WORLD, N, M)
     rank = MPI.COMM_WORLD.Get_rank()
-    WOp = WaveletTransformKronIdentityMPI(J, M=1)
-    WOpT = TransposedWaveletTransformKronIdentityMPI(J, M=1)
+    WOp = WaveletTransformKronIdentityMPI(dofs_distr, J)
+    WOpT = TransposedWaveletTransformKronIdentityMPI(dofs_distr, J)
     WOp2 = WaveletTransformOp(J, interleaved=True)
     WOp3 = LevelWaveletTransformOp(J)
     WOpmat = WOp.as_global_matrix()

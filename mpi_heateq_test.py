@@ -10,7 +10,7 @@ from mpi_heateq import HeatEquationMPI
 from mpi_kron import (BlockDiagMPI, CompositeMPI, IdentityMPI,
                       MatKronIdentityMPI, SumMPI, TridiagKronMatMPI, as_matrix)
 from mpi_kron_test import linearity_test_MPI, linop_test_MPI
-from mpi_vector import KronVectorMPI
+from mpi_vector import KronVectorMPI, DofDistributionMPI
 from problem import square
 
 refines = 2
@@ -38,8 +38,9 @@ def test_multigrid():
 def test_bilforms():
     def test_linop(N, M, linop):
         comm = MPI.COMM_WORLD
+        dofs_distr = DofDistributionMPI(MPI.COMM_WORLD, N, M)
         # Create some global vector on root.
-        x_mpi = KronVectorMPI(comm, N, M)
+        x_mpi = KronVectorMPI(dofs_distr)
         x_glob = None
         if comm.Get_rank() == 0:
             x_glob = np.random.rand(N * M) * 1.0
@@ -75,7 +76,8 @@ def test_S_apply():
     rank = comm.Get_rank()
 
     # Create some global vector on root.
-    x_mpi = KronVectorMPI(comm, N, M)
+    dofs_distr = DofDistributionMPI(MPI.COMM_WORLD, N, M)
+    x_mpi = KronVectorMPI(dofs_distr)
     x_glob = None
     if rank == 0:
         np.random.seed(0)
@@ -105,6 +107,7 @@ def test_solve():
         heat_eq_mpi = HeatEquationMPI(refines, precond='direct')
         N = heat_eq_mpi.N
         M = heat_eq_mpi.M
+        dofs_distr = DofDistributionMPI(MPI.COMM_WORLD, N, M)
 
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
@@ -129,7 +132,7 @@ def test_solve():
                 print('.', end='', flush=True)
 
         u_mpi, _ = PCG(heat_eq_mpi.S,
-                       IdentityMPI(N, M),
+                       IdentityMPI(dofs_distr),
                        heat_eq_mpi.rhs,
                        callback=cb)
 
@@ -145,7 +148,7 @@ def test_solve():
 
 def linop_test_apply_MPI(linop_mpi, linop):
     np.random.seed(123123)
-    x_mpi = KronVectorMPI(MPI.COMM_WORLD, linop_mpi.N, linop_mpi.M)
+    x_mpi = KronVectorMPI(linop_mpi.dofs_distr)
 
     x_glob = None
     if x_mpi.rank == 0:
@@ -193,14 +196,16 @@ def test_preconditioner():
     comm = MPI.COMM_WORLD
 
     # Create random MPI vector.
-    w_mpi = KronVectorMPI(comm, N, M)
+    dofs_distr = DofDistributionMPI(MPI.COMM_WORLD, N, M)
+    w_mpi = KronVectorMPI(dofs_distr)
     w_mpi.X_loc = np.random.rand(w_mpi.X_loc.shape[0], M)
 
     # Perform Lanczos.
     lanczos_mpi = Lanczos(heat_eq_mpi.WT_S_W, heat_eq_mpi.P, w=w_mpi)
 
     # Solve without and with preconditioner.
-    u_mpi_I, iters_I = PCG(heat_eq_mpi.S, IdentityMPI(N, M), heat_eq_mpi.rhs)
+    u_mpi_I, iters_I = PCG(heat_eq_mpi.S, IdentityMPI(dofs_distr),
+                           heat_eq_mpi.rhs)
     u_mpi_P, iters_P = PCG(heat_eq_mpi.WT_S_W, heat_eq_mpi.P, heat_eq_mpi.rhs)
     assert iters_P < iters_I
 
@@ -209,4 +214,4 @@ def test_preconditioner():
         _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines),
                                                 precond='direct')
         lanczos_demo = Lanczos(WT @ S @ W, P)
-        assert abs(lanczos_mpi.cond() - lanczos_demo.cond()) < 0.3
+        assert abs(lanczos_mpi.cond() - lanczos_demo.cond()) < 0.4

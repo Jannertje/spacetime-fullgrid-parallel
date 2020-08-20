@@ -14,7 +14,7 @@ from linalg import PCG
 from linop import AsLinearOperator, CompositeLinOp
 from mpi_kron import (BlockDiagMPI, CompositeMPI, MatKronIdentityMPI, SumMPI,
                       TridiagKronMatMPI)
-from mpi_vector import KronVectorMPI
+from mpi_vector import KronVectorMPI, DofDistributionMPI
 from wavelets import (TransposedWaveletTransformKronIdentityMPI,
                       WaveletTransformKronIdentityMPI, WaveletTransformOp)
 
@@ -96,6 +96,7 @@ class HeatEquationMPIShared:
 
         # ---- Share variables with comm leader ----
         self.N, self.M = shared_comm.bcast((self.N, self.M))
+        self.dofs_distr = DofDistributionMPI(MPI.COMM_WORLD, self.N, self.M)
 
         self.A_t = shared_sparse_matrix(self.A_t, shared_comm)
         self.L_t = shared_sparse_matrix(self.L_t, shared_comm)
@@ -115,16 +116,17 @@ class HeatEquationMPIShared:
         # --- Wavelet transform ---
         if wavelettransform == 'original':
             self.W_t = WaveletTransformOp(self.J_time)
-            self.W = MatKronIdentityMPI(self.W_t, self.M)
-            self.WT = MatKronIdentityMPI(self.W_t.H, self.M)
+            self.W = MatKronIdentityMPI(self.dofs_distr, self.W_t)
+            self.WT = MatKronIdentityMPI(self.dofs_distr, self.W_t.H)
         elif wavelettransform == 'interleaved':
             self.W_t = WaveletTransformOp(self.J_time, interleaved=True)
-            self.W = MatKronIdentityMPI(self.W_t, self.M)
-            self.WT = MatKronIdentityMPI(self.W_t.H, self.M)
+            self.W = MatKronIdentityMPI(self.dofs_distr, self.W_t)
+            self.WT = MatKronIdentityMPI(self.dofs_distr, self.W_t.H)
         elif wavelettransform == 'composite':
-            self.W = WaveletTransformKronIdentityMPI(self.J_time, self.M)
+            self.W = WaveletTransformKronIdentityMPI(self.dofs_distr,
+                                                     self.J_time)
             self.WT = TransposedWaveletTransformKronIdentityMPI(
-                self.J_time, self.M)
+                self.dofs_distr, self.J_time)
 
         # ---- Preconditioners in space ----
         hierarchy = MeshHierarchy(fes_x, shared_comm)
@@ -144,24 +146,29 @@ class HeatEquationMPIShared:
 
         # -- MPI objects --
         self.A_MKM = TridiagKronMatMPI(
-            self.A_t, CompositeLinOp([self.M_x, self.Kinv_x, self.M_x]))
+            self.dofs_distr, self.A_t,
+            CompositeLinOp([self.M_x, self.Kinv_x, self.M_x]))
         self.L_MKA = TridiagKronMatMPI(
-            self.L_t, CompositeLinOp([self.M_x, self.Kinv_x, self.A_x]))
+            self.dofs_distr, self.L_t,
+            CompositeLinOp([self.M_x, self.Kinv_x, self.A_x]))
         self.LT_AKM = TridiagKronMatMPI(
-            self.L_t.T.tocsr(),
+            self.dofs_distr, self.L_t.T.tocsr(),
             CompositeLinOp([self.A_x, self.Kinv_x, self.M_x]))
         self.M_AKA = TridiagKronMatMPI(
-            self.M_t, CompositeLinOp([self.A_x, self.Kinv_x, self.A_x]))
-        self.G_M = TridiagKronMatMPI(self.G_t, self.M_x)
+            self.dofs_distr, self.M_t,
+            CompositeLinOp([self.A_x, self.Kinv_x, self.A_x]))
+        self.G_M = TridiagKronMatMPI(self.dofs_distr, self.G_t, self.M_x)
         self.S = SumMPI(
+            self.dofs_distr,
             [self.A_MKM, self.L_MKA, self.LT_AKM, self.M_AKA, self.G_M])
 
-        self.P = BlockDiagMPI([self.CAC_j[j] for j in self.W.levels])
-        self.WT_S_W = CompositeMPI([self.WT, self.S, self.W])
+        self.P = BlockDiagMPI(self.dofs_distr,
+                              [self.CAC_j[j] for j in self.W.levels])
+        self.WT_S_W = CompositeMPI(self.dofs_distr, [self.WT, self.S, self.W])
         self.mem_after_mpi = mem()
 
         # -- RHS --
-        self.rhs = KronVectorMPI(MPI.COMM_WORLD, self.N, self.M)
+        self.rhs = KronVectorMPI(self.dofs_distr)
         self.rhs.X_loc[:] = np.kron(self.u0_t[self.rhs.t_begin:self.rhs.t_end],
                                     self.u0_x).reshape(-1, self.M)
 
