@@ -223,11 +223,7 @@ if __name__ == "__main__":
         print('\n\nCreating mesh with {} time refines and {} space refines.'.
               format(J_time, J_space))
         print('MPI tasks: ', size)
-        if precond == 'mg':
-            print('Preconditioner:', precond, 'smoothsteps:', args.smoothsteps,
-                  'vcycles:', args.vcycles)
-        else:
-            print('Preconditioner:', precond)
+        print('Arguments:', args)
         print('N = {}. M = {}.'.format(heat_eq_mpi.N, heat_eq_mpi.M))
         print('Constructed bilinear forms in {} s.'.format(
             heat_eq_mpi.setup_time))

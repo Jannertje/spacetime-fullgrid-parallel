@@ -24,7 +24,12 @@ def mem():
 
 
 class HeatEquationMPIShared:
-    def __init__(self, J_space=2, J_time=None, smoothsteps=3, vcycles=2):
+    def __init__(self,
+                 J_space=2,
+                 J_time=None,
+                 wavelettransform='original',
+                 smoothsteps=3,
+                 vcycles=2):
         shared_comm = MPI.COMM_WORLD.Split_type(MPI.COMM_TYPE_SHARED)
         self.shared_comm = shared_comm
 
@@ -88,14 +93,13 @@ class HeatEquationMPIShared:
                                 lambda v: data['u0'] * v * dx).assemble()
         self.mem_after_ngsolve = mem()
 
-        # Set variables to according to the leader.
+        # ---- Share variables with comm leader ----
         self.N, self.M = shared_comm.bcast((self.N, self.M))
 
         self.A_t = shared_sparse_matrix(self.A_t, shared_comm)
         self.L_t = shared_sparse_matrix(self.L_t, shared_comm)
         self.M_t = shared_sparse_matrix(self.M_t, shared_comm)
         self.G_t = shared_sparse_matrix(self.G_t, shared_comm)
-        self.W_t = WaveletTransformOp(self.J_time)
 
         self.M_x = shared_sparse_matrix(self.M_x, shared_comm)
         self.A_x = shared_sparse_matrix(self.A_x, shared_comm)
@@ -106,6 +110,20 @@ class HeatEquationMPIShared:
         self.u0_t = shared_numpy_array(self.u0_t, shared_comm)
         self.u0_x = shared_numpy_array(self.u0_x, shared_comm)
         self.mem_after_shared_matrices = mem()
+
+        # --- Wavelet transform ---
+        if wavelettransform == 'original':
+            self.W_t = WaveletTransformOp(self.J_time)
+            self.W = MatKronIdentityMPI(self.W_t, self.M)
+            self.WT = MatKronIdentityMPI(self.W_t.H, self.M)
+        elif wavelettransform == 'interleaved':
+            self.W_t = WaveletTransformOp(self.J_time, interleaved=True)
+            self.W = MatKronIdentityMPI(self.W_t, self.M)
+            self.WT = MatKronIdentityMPI(self.W_t.H, self.M)
+        elif wavelettransform == 'composite':
+            self.W = WaveletTransformKronIdentityMPI(self.J_time, self.M)
+            self.WT = TransposedWaveletTransformKronIdentityMPI(
+                self.J_time, self.M)
 
         # ---- Preconditioners in space ----
         hierarchy = MeshHierarchy(fes_x, shared_comm)
@@ -137,10 +155,7 @@ class HeatEquationMPIShared:
         self.S = SumMPI(
             [self.A_MKM, self.L_MKA, self.LT_AKM, self.M_AKA, self.G_M])
 
-        self.P = BlockDiagMPI([self.CAC_j[j] for j in self.W_t.levels])
-
-        self.W = MatKronIdentityMPI(self.W_t, self.M)
-        self.WT = MatKronIdentityMPI(self.W_t.H, self.M)
+        self.P = BlockDiagMPI([self.CAC_j[j] for j in self.W.levels])
         self.WT_S_W = CompositeMPI([self.WT, self.S, self.W])
         self.mem_after_mpi = mem()
 
@@ -178,6 +193,9 @@ if __name__ == "__main__":
                         type=int,
                         default=2,
                         help='number of vcycles')
+    parser.add_argument('--wavelettransform',
+                        default='original',
+                        help='type of wavelettransform')
 
     args = parser.parse_args()
     J_time = args.J_time
@@ -192,12 +210,13 @@ if __name__ == "__main__":
     heat_eq_mpi = HeatEquationMPIShared(J_space=J_space,
                                         J_time=J_time,
                                         smoothsteps=args.smoothsteps,
-                                        vcycles=args.vcycles)
+                                        vcycles=args.vcycles,
+                                        wavelettransform=args.wavelettransform)
     if rank == 0:
         print('\n\nCreating mesh with {} time refines and {} space refines.'.
               format(J_time, J_space))
         print('MPI tasks: ', size)
-        print('Smoothsteps:', args.smoothsteps, '. Vcycles:', args.vcycles)
+        print('Arguments:', args)
         print('N = {}. M = {}.'.format(heat_eq_mpi.N, heat_eq_mpi.M))
         print('Constructed bilinear forms in {} s.'.format(
             heat_eq_mpi.setup_time))
