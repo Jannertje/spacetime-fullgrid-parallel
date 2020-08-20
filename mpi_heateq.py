@@ -45,7 +45,7 @@ class HeatEquationMPI:
                  order=1,
                  wavelettransform='original',
                  smoothsteps=3,
-                 alpha=0.5,
+                 alpha=0.3,
                  vcycles=2):
         precond_ngsolve = precond != 'mg' and precond != 'pyamg'
         start_time = MPI.Wtime()
@@ -207,7 +207,7 @@ if __name__ == "__main__":
                         type=int,
                         default=2,
                         help='number of vcycles')
-    parser.add_argument('--alpha', type=float, default=0.5, help='alpha')
+    parser.add_argument('--alpha', type=float, default=0.3, help='alpha')
 
     args = parser.parse_args()
     precond = args.precond

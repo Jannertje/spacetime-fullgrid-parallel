@@ -30,7 +30,7 @@ class HeatEquationMPIShared:
                  J_time=None,
                  wavelettransform='original',
                  smoothsteps=3,
-                 alpha=0.5,
+                 alpha=0.3,
                  vcycles=2):
         shared_comm = MPI.COMM_WORLD.Split_type(MPI.COMM_TYPE_SHARED)
         self.shared_comm = shared_comm
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     parser.add_argument('--wavelettransform',
                         default='original',
                         help='type of wavelettransform')
-    parser.add_argument('--alpha', type=float, default=0.5, help='alpha')
+    parser.add_argument('--alpha', type=float, default=0.3, help='alpha')
 
     args = parser.parse_args()
     J_time = args.J_time
