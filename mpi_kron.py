@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.sparse
-from mpi4py import MPI
 
+from mpi4py import MPI
 from mpi_vector import KronVectorMPI
 
 
@@ -203,6 +203,8 @@ class MatKronIdentityMPI(LinearOperatorMPI):
         M = dofs_space
         assert (N == K)
         self.mat_time = mat_time
+        if hasattr(mat_time, 'levels'):
+            self.levels = mat_time.levels
         super().__init__(N, M)
 
     def _matvec(self, vec_in, vec_out):
@@ -218,5 +220,53 @@ class MatKronIdentityMPI(LinearOperatorMPI):
 
         # Permute the vector back.
         vec_in_permuted.permute(vec_out)
+
+        return vec_out
+
+
+class SparseKronIdentityMPI(LinearOperatorMPI):
+    """ Requires a square matrix in CSR with symmetric sparsity pattern. """
+    def __init__(self, mat_time, dofs_space, add_identity=False):
+        assert scipy.sparse.isspmatrix_csr(mat_time)
+        N, K = mat_time.shape
+        M = dofs_space
+        assert (N == K)
+        self.mat_time = mat_time
+        self.comm_dofs = None
+        self.add_identity = add_identity
+        super().__init__(N, M)
+
+    def _matvec(self, vec_in, vec_out):
+        assert (isinstance(vec_in, KronVectorMPI))
+        assert (self.N == vec_in.N and self.M == vec_in.M)
+        assert (vec_in.X_loc.shape == vec_out.X_loc.shape)
+
+        if not self.comm_dofs:
+            comm_dofs = set()
+            for row in range(vec_in.t_begin, vec_in.t_end):
+                for col in self.mat_time[row, :].indices:
+                    if col < vec_in.t_begin or vec_in.t_end <= col:
+                        comm_dofs.add((row, col))
+            self.comm_dofs = sorted(comm_dofs)
+
+        if len(self.comm_dofs):
+            X_recv = vec_in.communicate_dofs(self.comm_dofs)
+
+        # for every processor, loop over its own timesteps
+        for t in range(vec_in.t_begin, vec_in.t_end):
+            row = self.mat_time[t, :]
+            for idx, coeff in zip(row.indices, row.data):
+                t_ = t - vec_out.t_begin
+                idx_ = idx - vec_in.t_begin
+                if vec_in.t_begin <= idx < vec_in.t_end:
+                    # The data is in X_loc
+                    vec_out.X_loc[t_, :] += coeff * vec_in.X_loc[idx_]
+                else:
+                    # The data is in X_recv
+                    vec_out.X_loc[t_, :] += coeff * X_recv[idx]
+
+        if self.add_identity:
+            assert vec_out is not vec_in
+            vec_out.X_loc += vec_in.X_loc
 
         return vec_out

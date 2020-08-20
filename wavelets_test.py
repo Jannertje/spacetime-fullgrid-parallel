@@ -2,8 +2,12 @@ from math import sqrt
 
 import numpy as np
 
+from mpi4py import MPI
 from mpi_kron import as_matrix
-from wavelets import WaveletTransformMat, WaveletTransformOp
+from wavelets import (LevelWaveletTransformOp,
+                      TransposedWaveletTransformKronIdentityMPI,
+                      WaveletTransformKronIdentityMPI, WaveletTransformMat,
+                      WaveletTransformOp)
 
 
 def test_mat_equals_matfree():
@@ -59,3 +63,18 @@ def test_interleaved_wavelet_transform_works():
                         np.linspace(-sqrt(2), sqrt(2), 2**(J - 1) + 1)))
     assert (np.allclose(y[2**(J - 1):],
                         np.linspace(sqrt(2), -sqrt(2), 2**(J - 1) + 1)))
+
+
+def test_mpi_wavelet_transform_works():
+    J = 4
+    rank = MPI.COMM_WORLD.Get_rank()
+    WOp = WaveletTransformKronIdentityMPI(J, M=1)
+    WOpT = TransposedWaveletTransformKronIdentityMPI(J, M=1)
+    WOp2 = WaveletTransformOp(J, interleaved=True)
+    WOp3 = LevelWaveletTransformOp(J)
+    WOpmat = WOp.as_global_matrix()
+    WOpTmat = WOpT.as_global_matrix()
+    if rank == 0:
+        assert np.allclose(WOpmat, as_matrix(WOp2))
+        assert np.allclose(as_matrix(WOp3), as_matrix(WOp2))
+        assert np.allclose(WOpTmat, WOpmat.T)
