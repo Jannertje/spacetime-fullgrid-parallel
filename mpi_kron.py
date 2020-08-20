@@ -253,9 +253,13 @@ class SparseKronIdentityMPI(LinearOperatorMPI):
         assert (mat_time.nnz)
         self.add_identity = add_identity
         coo_mat = mat_time.tocoo()
-        self.row, self.col, self.data = zip(*(
+        sliced_mat = list(
             filter(lambda rdc: dofs_distr.t_begin <= rdc[0] < dofs_distr.t_end,
-                   zip(coo_mat.row, coo_mat.col, coo_mat.data))))
+                   zip(coo_mat.row, coo_mat.col, coo_mat.data)))
+        if sliced_mat:
+            self.row, self.col, self.data = zip(*sliced_mat)
+        else:
+            self.row = self.col = self.data = []
 
         self.comm_dofs = sorted(
             set((row, col) for row, col in zip(self.row, self.col)
