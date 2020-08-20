@@ -11,7 +11,6 @@ from multigrid import MeshHierarchy, MultiGrid
 from scipy.sparse.linalg.interface import LinearOperator
 
 from linalg import PCG
-from linform import LinForm
 from linop import AsLinearOperator, CompositeLinOp
 from mpi_kron import (BlockDiagMPI, CompositeMPI, MatKronIdentityMPI, SumMPI,
                       TridiagKronMatMPI)
@@ -49,6 +48,7 @@ class HeatEquationMPIShared:
             from bilform import BilForm
             from fespace import KronFES
             from problem import square
+            from linform import LinForm
             ngsglobals.msg_level = 0
             mesh_space, bc_space, mesh_time, data, fn = square(J_space=J_space,
                                                                J_time=J_time)
@@ -86,7 +86,7 @@ class HeatEquationMPIShared:
             self.u0_t = LinForm(X.time, lambda v: v * ds('start')).assemble()
             self.u0_x = LinForm(X.space,
                                 lambda v: data['u0'] * v * dx).assemble()
-            self.mem_after_ngsolve = mem()
+        self.mem_after_ngsolve = mem()
 
         # Set variables to according to the leader.
         self.N, self.M = shared_comm.bcast((self.N, self.M))
@@ -142,6 +142,7 @@ class HeatEquationMPIShared:
         self.W = MatKronIdentityMPI(self.W_t, self.M)
         self.WT = MatKronIdentityMPI(self.W_t.H, self.M)
         self.WT_S_W = CompositeMPI([self.WT, self.S, self.W])
+        self.mem_after_mpi = mem()
 
         # -- RHS --
         self.rhs = KronVectorMPI(MPI.COMM_WORLD, self.N, self.M)
@@ -149,6 +150,7 @@ class HeatEquationMPIShared:
                                     self.u0_x).reshape(-1, self.M)
 
         self.setup_time = MPI.Wtime() - start_time
+        self.mem_after_mpi = mem()
 
     def print_time_per_apply(self):
         print('W: ', self.W.time_per_apply())
