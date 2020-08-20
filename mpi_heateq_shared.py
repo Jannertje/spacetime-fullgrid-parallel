@@ -189,7 +189,6 @@ if __name__ == "__main__":
         print('Too many MPI processors!')
         sys.exit('1')
 
-    MPI.COMM_WORLD.Barrier()
     heat_eq_mpi = HeatEquationMPIShared(J_space=J_space,
                                         J_time=J_time,
                                         smoothsteps=args.smoothsteps,
@@ -222,6 +221,7 @@ if __name__ == "__main__":
                          heat_eq_mpi.rhs,
                          callback=cb)
 
+    MPI.COMM_WORLD.Barrier()
     if rank == 0:
         print('')
         print('Completed in {} PCG steps.'.format(iters))
