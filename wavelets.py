@@ -1,4 +1,6 @@
 import numpy as np
+from mpi_vector import KronVectorMPI
+from mpi4py import MPI
 import scipy.sparse as sp
 import scipy.sparse.linalg
 from scipy import sparse as sp
@@ -165,3 +167,30 @@ class TransposedWaveletTransformKronIdentityMPI(CompositeMPI):
             linops.append(
                 SparseKronIdentityMPI(split.T.tocsr(), M, add_identity=True))
         super().__init__(linops)
+
+
+if __name__ == "__main__":
+    J_time = 9
+    M = 65025
+    N = 513
+    start_time = MPI.Wtime()
+    W = WaveletTransformKronIdentityMPI(J_time, M)
+    WT = TransposedWaveletTransformKronIdentityMPI(J_time, M)
+    vec = KronVectorMPI(MPI.COMM_WORLD, N, M)
+    vec.X_loc = np.random.rand(*vec.X_loc.shape)
+    if MPI.COMM_WORLD.rank == 0:
+        print('MPI Tasks:', MPI.COMM_WORLD.Get_size())
+
+    MPI.COMM_WORLD.Barrier()
+    start_time = MPI.Wtime()
+    for _ in range(10):
+        W @ vec
+    if MPI.COMM_WORLD.rank == 0:
+        print('W: ', MPI.Wtime() - start_time)
+
+    MPI.COMM_WORLD.Barrier()
+    start_time = MPI.Wtime()
+    for _ in range(10):
+        WT @ vec
+    if MPI.COMM_WORLD.rank == 0:
+        print('WT:', MPI.Wtime() - start_time)
