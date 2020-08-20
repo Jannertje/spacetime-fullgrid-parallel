@@ -162,5 +162,6 @@ class TransposedWaveletTransformKronIdentityMPI(CompositeMPI):
         self.levels = wavelet_transform.levels
         linops = []
         for split in wavelet_transform.split:
-            linops.append(SparseKronIdentityMPI(split.T, M, add_identity=True))
+            linops.append(
+                SparseKronIdentityMPI(split.T.tocsr(), M, add_identity=True))
         super().__init__(linops)

@@ -68,9 +68,13 @@ def test_interleaved_wavelet_transform_works():
 def test_mpi_wavelet_transform_works():
     J = 4
     rank = MPI.COMM_WORLD.Get_rank()
+    WOp = WaveletTransformKronIdentityMPI(J, M=1)
+    WOpT = TransposedWaveletTransformKronIdentityMPI(J, M=1)
+    WOp2 = WaveletTransformOp(J, interleaved=True)
+    WOp3 = LevelWaveletTransformOp(J)
+    WOpmat = WOp.as_global_matrix()
+    WOpTmat = WOpT.as_global_matrix()
     if rank == 0:
-        WOp = WaveletTransformKronIdentityMPI(J, M=1)
-        WOp2 = WaveletTransformOp(J, interleaved=True)
-        WOp3 = LevelWaveletTransformOp(J)
-        assert np.allclose(WOp.as_global_matrix(), as_matrix(WOp2))
+        assert np.allclose(WOpmat, as_matrix(WOp2))
         assert np.allclose(as_matrix(WOp3), as_matrix(WOp2))
+        assert np.allclose(WOpTmat, WOpmat.T)

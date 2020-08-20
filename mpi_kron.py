@@ -227,7 +227,7 @@ class MatKronIdentityMPI(LinearOperatorMPI):
 class SparseKronIdentityMPI(LinearOperatorMPI):
     """ Requires a square matrix in CSR with symmetric sparsity pattern. """
     def __init__(self, mat_time, dofs_space, add_identity=False):
-        assert (scipy.sparse.isspmatrix_csr(mat_time))
+        assert scipy.sparse.isspmatrix_csr(mat_time)
         N, K = mat_time.shape
         M = dofs_space
         assert (N == K)
@@ -248,18 +248,25 @@ class SparseKronIdentityMPI(LinearOperatorMPI):
                     if col < vec_in.t_begin or vec_in.t_end <= col:
                         comm_dofs.add((row, col))
             self.comm_dofs = sorted(comm_dofs)
-        recv_dofs = [dof for _, dof in self.comm_dofs]
 
-        X = scipy.sparse.lil_matrix((vec_in.N, vec_in.M))
-        X[vec_in.t_begin:vec_in.t_end] = vec_in.X_loc
         if len(self.comm_dofs):
-            X[recv_dofs] = vec_in.communicate_dofs(self.comm_dofs)
+            X_recv = vec_in.communicate_dofs(self.comm_dofs)
 
-        # TODO: replace dense matmat
-        Y = (self.mat_time[vec_in.t_begin:vec_in.t_end] @ X.tocsc()).toarray()
+        # for every processor, loop over its own timesteps
+        for t in range(vec_in.t_begin, vec_in.t_end):
+            row = self.mat_time[t, :]
+            for idx, coeff in zip(row.indices, row.data):
+                t_ = t - vec_out.t_begin
+                idx_ = idx - vec_in.t_begin
+                if vec_in.t_begin <= idx < vec_in.t_end:
+                    # The data is in X_loc
+                    vec_out.X_loc[t_, :] += coeff * vec_in.X_loc[idx_]
+                else:
+                    # The data is in X_recv
+                    vec_out.X_loc[t_, :] += coeff * X_recv[idx]
+
         if self.add_identity:
-            vec_out.X_loc = vec_in.X_loc + Y
-        else:
-            vec_out.X_loc = Y
+            assert vec_out is not vec_in
+            vec_out.X_loc += vec_in.X_loc
 
         return vec_out

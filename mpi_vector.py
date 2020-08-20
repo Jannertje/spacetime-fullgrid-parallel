@@ -99,14 +99,14 @@ class KronVectorMPI:
 
     def communicate_dofs(self, comm_dofs):
         reqs = []
-        X_recv = np.zeros((len(comm_dofs), self.M))
-        for i, (send, recv) in enumerate(comm_dofs):
+        X_recv = {recv: np.zeros(self.M) for (send, recv) in comm_dofs}
+        for send, recv in comm_dofs:
             reqs.append(
                 self.comm.Isend(self.X_loc[send - self.t_begin, :],
                                 dest=self.dof2proc[recv],
                                 tag=send))
             reqs.append(
-                self.comm.Irecv(X_recv[i, :],
+                self.comm.Irecv(X_recv[recv],
                                 source=self.dof2proc[recv],
                                 tag=recv))
 
