@@ -37,7 +37,13 @@ def PyAMG(A):
 
 
 class HeatEquationMPI:
-    def __init__(self, J_space=2, J_time=None, precond='multigrid', order=1):
+    def __init__(self,
+                 J_space=2,
+                 J_time=None,
+                 precond='multigrid',
+                 order=1,
+                 smoothsteps=3,
+                 vcycles=2):
         precond_ngsolve = precond != 'mg' and precond != 'pyamg'
 
         start_time = MPI.Wtime()
@@ -86,7 +92,10 @@ class HeatEquationMPI:
         elif precond == 'pyamg':
             self.Kinv_x = PyAMG(self.A_x)
         else:
-            self.Kinv_x = MultiGrid(self.A_x, hierarchy)
+            self.Kinv_x = MultiGrid(self.A_x,
+                                    hierarchy,
+                                    smoothsteps=smoothsteps,
+                                    vcycles=vcycles)
         self.mem_after_space = mem()
 
         # --- Preconditioner on X ---
@@ -105,7 +114,11 @@ class HeatEquationMPI:
             elif precond == 'pyamg':
                 self.C_j.append(PyAMG(bf.assemble()))
             else:
-                self.C_j.append(MultiGrid(bf.assemble(), hierarchy))
+                self.C_j.append(
+                    MultiGrid(bf.assemble(),
+                              hierarchy,
+                              smoothsteps=smoothsteps,
+                              vcycles=vcycles))
 
         self.CAC_j = [
             CompositeLinOp([self.C_j[j], self.A_x, self.C_j[j]])
@@ -165,6 +178,14 @@ if __name__ == "__main__":
                         type=int,
                         default=7,
                         help='number of space refines')
+    parser.add_argument('--smoothsteps',
+                        type=int,
+                        default=3,
+                        help='number of smoothing steps')
+    parser.add_argument('--vcycles',
+                        type=int,
+                        default=2,
+                        help='number of vcycles')
 
     args = parser.parse_args()
     precond = args.precond
@@ -181,7 +202,9 @@ if __name__ == "__main__":
     MPI.COMM_WORLD.Barrier()
     heat_eq_mpi = HeatEquationMPI(J_space=J_space,
                                   J_time=J_time,
-                                  precond=precond)
+                                  precond=precond,
+                                  smoothsteps=args.smoothsteps,
+                                  vcycles=args.vcycles)
     if rank == 0:
         print('\n\nCreating mesh with {} time refines and {} space refines.'.
               format(J_time, J_space))

@@ -1,12 +1,11 @@
 import numpy as np
+import os
+import psutil
+from shared_mem import shared_sparse_matrix
+from mpi4py import MPI
 from scipy.sparse.linalg import splu, LinearOperator
 from petsc4py import PETSc
 import scipy.sparse
-from netgen.csg import unit_cube
-from netgen.geom2d import unit_square
-from ngsolve import (H1, BaseMatrix, BilinearForm, InnerProduct,
-                     Preconditioner, TaskManager, ds, dx, grad, ngsglobals)
-from ngsolve.la import EigenValues_Preconditioner
 from scipy.sparse import csr_matrix
 
 from bilform import BilForm
@@ -16,53 +15,77 @@ from mesh import construct_2d_square_mesh
 from mpi_kron import as_matrix
 
 
+def mem():
+    process = psutil.Process(os.getpid())
+    return process.memory_info().rss / 1048576
+
+
 class MeshHierarchy:
-    def __init__(self, fes):
-        mesh = fes.mesh
-        parents = np.array([mesh.GetParentVertices(v) for v in range(mesh.nv)])
-        levels = np.zeros(len(parents), dtype=np.int)
-        for v in reversed(range(mesh.nv)):
-            for gp in parents[v]:
-                if gp == -1: break
-                levels[gp] = levels[v] - 1
-        levels = levels - levels[0]
-        J = levels[-1]
-        nverts = np.zeros(J + 1, dtype=np.int)
-        for v in levels:
-            nverts[v] += 1
-        nverts = np.cumsum(nverts, dtype=np.int)
-        fdofs = np.array(fes.FreeDofs())
-        I = scipy.sparse.eye(len(fdofs)).tocsr()
+    def __init__(self, fes, shared_comm=None):
+        J = None
+        if shared_comm is None or shared_comm.rank == 0:
+            mesh = fes.mesh
+            parents = np.array(
+                [mesh.GetParentVertices(v) for v in range(mesh.nv)])
+            levels = np.zeros(len(parents), dtype=np.int)
+            for v in reversed(range(mesh.nv)):
+                for gp in parents[v]:
+                    if gp == -1: break
+                    levels[gp] = levels[v] - 1
+            levels = levels - levels[0]
+            J = levels[-1]
+            nverts = np.zeros(J + 1, dtype=np.int)
+            for v in levels:
+                nverts[v] += 1
+            nverts = np.cumsum(nverts, dtype=np.int)
+            fdofs = np.array(fes.FreeDofs())
+            I = scipy.sparse.eye(len(fdofs)).tocsr()
 
-        # Maps a full matrix to the restricted variant.
-        self.F_J = I[fdofs, :]
+            # Maps a full matrix to the restricted variant.
+            self.F_J = I[fdofs, :]
 
-        P_mats = []
-        for j in range(J):
-            nc = nverts[j]
-            nf = nverts[j + 1]
-            row, col, val = np.empty(
-                nc + 2 * (nf - nc), dtype=np.int), np.empty(
-                    nc + 2 * (nf - nc),
-                    dtype=np.int), np.empty(nc + 2 * (nf - nc))
+            P_mats = []
+            for j in range(J):
+                nc = nverts[j]
+                nf = nverts[j + 1]
+                row, col, val = np.empty(
+                    nc + 2 * (nf - nc), dtype=np.int), np.empty(
+                        nc + 2 * (nf - nc),
+                        dtype=np.int), np.empty(nc + 2 * (nf - nc))
 
-            # Identity along the diagonal.
-            row[0:nc] = np.arange(nc)
-            col[0:nc] = np.arange(nc)
-            val[0:nc] = 1
+                # Identity along the diagonal.
+                row[0:nc] = np.arange(nc)
+                col[0:nc] = np.arange(nc)
+                val[0:nc] = 1
 
-            row[nc:] = np.repeat(np.arange(nc, nf), repeats=2)
-            col[nc:] = parents[nc:nf].reshape(-1)
-            val[nc:] = 0.5
+                row[nc:] = np.repeat(np.arange(nc, nf), repeats=2)
+                col[nc:] = parents[nc:nf].reshape(-1)
+                val[nc:] = 0.5
 
-            # Now filter out all the vertices that do not correspond to dofs.
-            P_mats.append(I[fdofs[:nf], :nf] @ csr_matrix(
-                (val, (row, col)), shape=(nf, nc)) @ I[:nc, fdofs[:nc]])
+                # Now filter out all the vertices that do not correspond to dofs.
+                P_mats.append(I[fdofs[:nf], :nf] @ csr_matrix(
+                    (val, (row, col)), shape=(nf, nc)) @ I[:nc, fdofs[:nc]])
+                R_mats = [P.T.tocsr() for P in P_mats]
 
         # set variables
-        self.J = J
-        self.P_mats = P_mats
-        self.R_mats = [P.T.tocsr() for P in P_mats]
+        self.shared_comm = shared_comm
+        if shared_comm is None:
+            self.J = J
+            self.P_mats = P_mats
+            self.R_mats = R_mats
+        else:
+            self.J = shared_comm.bcast(J)
+            # Create shared matrices.
+            if shared_comm.rank != 0:
+                P_mats = [None for _ in range(self.J)]
+                R_mats = [None for _ in range(self.J)]
+
+            self.P_mats = [
+                shared_sparse_matrix(P, shared_comm) for P in P_mats
+            ]
+            self.R_mats = [
+                shared_sparse_matrix(R, shared_comm) for R in R_mats
+            ]
 
 
 class Smoother:
@@ -112,15 +135,29 @@ class PETScSMoother:
 
 
 class MultiGrid(LinearOperator):
-    def __init__(self, mat, hierarchy, smoothsteps=1, vcycles=1):
-        super().__init__(shape=mat.shape, dtype=np.float64)
-        # Store the matrix/smoothers on all levels.
-        self.mats = [mat]
+    def __init__(self, mat, hierarchy, smoothsteps=2, vcycles=1):
+        self.num_applies = 0
+        self.time_applies = 0
         self.hierarchy = hierarchy
-        for j in reversed(range(hierarchy.J)):
+        self.smoothsteps = smoothsteps
+        self.vcycles = vcycles
+        shared_comm = hierarchy.shared_comm
+
+        if shared_comm is None or shared_comm.rank == 0:
+            # Store the matrix/smoothers on all levels.
+            mats = [mat]
+            for j in reversed(range(hierarchy.J)):
+                mats = [hierarchy.R_mats[j] @ mats[0] @ hierarchy.P_mats[j]
+                        ] + mats
+
+        if shared_comm is None:
+            self.mats = mats
+        else:
+            if shared_comm.rank != 0:
+                mats = [None for _ in range(hierarchy.J + 1)]
             self.mats = [
-                hierarchy.R_mats[j] @ self.mats[0] @ hierarchy.P_mats[j]
-            ] + self.mats
+                shared_sparse_matrix(mat, shared_comm) for mat in mats[:-1]
+            ] + [mat]
 
         self.smoothers = [None]
         for j in range(1, hierarchy.J + 1):
@@ -132,9 +169,7 @@ class MultiGrid(LinearOperator):
             options={"SymmetricMode": True},
             permc_spec="MMD_AT_PLUS_A",
         )
-
-        self.smoothsteps = smoothsteps
-        self.vcycles = vcycles
+        super().__init__(shape=self.mats[-1].shape, dtype=np.float64)
 
     def MGM(self, j, u_j, f_j):
         if j == 0:
@@ -151,28 +186,46 @@ class MultiGrid(LinearOperator):
         return u_j
 
     def _matvec(self, b):
+        start_time = MPI.Wtime()
+
         x = np.zeros(b.shape[0])
         for _ in range(self.vcycles):
             self.MGM(self.hierarchy.J, x, b.reshape(-1))
+
+        self.num_applies += 1
+        self.time_applies += MPI.Wtime() - start_time
         return x
+
+    def time_per_apply(self):
+        assert (self.time_applies)
+        return self.time_applies / self.num_applies
 
 
 if __name__ == "__main__":
-    mesh, bc = construct_2d_square_mesh(6)
-    fes = H1(mesh, order=1, dirichlet=bc)
-    A_bf = BilForm(
-        fes, bilform_lambda=lambda u, v: InnerProduct(grad(u), grad(v)) * dx)
-    A = A_bf.assemble()
-    A_petsc = PETSc.Mat().createAIJWithArrays(size=A.shape,
-                                              csr=(A.indptr, A.indices,
-                                                   A.data))
-    hierarch = MeshHierarchy(fes)
+    shared_comm = MPI.COMM_WORLD.Split_type(MPI.COMM_TYPE_SHARED)
+    if shared_comm.rank == 0:
+        from ngsolve import (H1, BaseMatrix, BilinearForm, InnerProduct,
+                             Preconditioner, TaskManager, ds, dx, grad,
+                             ngsglobals)
+        mesh, bc = construct_2d_square_mesh(9)
+        fes = H1(mesh, order=1, dirichlet=bc)
+        A_bf = BilForm(
+            fes,
+            bilform_lambda=lambda u, v: InnerProduct(grad(u), grad(v)) * dx)
+        A = A_bf.assemble()
+    else:
+        A = None
+        fes = None
+    hierarch = MeshHierarchy(fes, shared_comm=shared_comm)
+    A = shared_sparse_matrix(A, shared_comm)
+    print(A.shape)
 
-    for smoothsteps in [1]:
-        for vcycles in [1]:
+    for smoothsteps in [1, 2, 3, 4]:
+        for vcycles in [1, 2, 3, 4]:
             mg = MultiGrid(A,
                            hierarch,
                            smoothsteps=smoothsteps,
                            vcycles=vcycles)
-            print('smoothsteps={} vcycles={} lanczos:{}'.format(
-                smoothsteps, vcycles, Lanczos(A, mg)))
+            lanczos = Lanczos(A, mg)
+            print('smoothsteps={} vcycles={} time_per_apply={} lanczos:{}'.
+                  format(smoothsteps, vcycles, mg.time_per_apply(), lanczos))

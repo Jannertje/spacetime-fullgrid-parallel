@@ -1,4 +1,5 @@
 import numpy as np
+from mpi4py import MPI
 from netgen.csg import unit_cube
 from netgen.geom2d import unit_square
 from ngsolve import (H1, BaseMatrix, BilinearForm, InnerProduct,
@@ -102,3 +103,18 @@ def test_multigrid_symmetric():
 
         mg_mat = as_matrix(mg)
         assert np.allclose(mg_mat.T, mg_mat)
+
+
+def test_multigrid_MPI():
+    shared_comm = MPI.COMM_WORLD.Split_type(MPI.COMM_TYPE_SHARED)
+    for refines in range(4):
+        mesh, bc = construct_2d_square_mesh(refines)
+        fes = H1(mesh, order=1, dirichlet=bc)
+        A = BilForm(fes,
+                    bilform_lambda=lambda u, v: InnerProduct(grad(u), grad(v))
+                    * dx).assemble()
+        hierarchy = MeshHierarchy(fes)
+        hierarchy_mpi = MeshHierarchy(fes, shared_comm=shared_comm)
+        mg_seq = MultiGrid(A, hierarchy)
+        mg_mpi = MultiGrid(A, hierarchy_mpi)
+        assert np.allclose(as_matrix(mg_seq), as_matrix(mg_mpi))
