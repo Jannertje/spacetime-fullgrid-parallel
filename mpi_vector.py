@@ -82,6 +82,7 @@ class KronVectorMPI:
                           [X_glob, self.counts, self.displs, MPI.DOUBLE])
 
     def communicate_bdr(self):
+        start_time = MPI.Wtime()
         reqs = []
         if self.rank > 0:
             reqs.append(self.comm.Isend(self.X_loc[0, :], self.rank - 1))
@@ -95,9 +96,10 @@ class KronVectorMPI:
             reqs.append(self.comm.Irecv(bdr[1], source=self.rank + 1))
 
         MPI.Request.Waitall(reqs)
-        return bdr
+        return bdr, MPI.Wtime() - start_time
 
     def communicate_dofs(self, comm_dofs):
+        start_time = MPI.Wtime()
         reqs = []
         X_recv = {recv: np.zeros(self.M) for (send, recv) in comm_dofs}
         for send, recv in comm_dofs:
@@ -111,7 +113,7 @@ class KronVectorMPI:
                                 tag=recv))
 
         MPI.Request.Waitall(reqs)
-        return X_recv
+        return X_recv, MPI.Wtime() - start_time
 
     def dot(self, vec_other):
         assert (isinstance(vec_other, KronVectorMPI))
@@ -122,6 +124,7 @@ class KronVectorMPI:
 
     def permute(self, vec_perm=None):
         """ Permutes the order of the kronecker product. """
+        start_time = MPI.Wtime()
         if vec_perm is None:
             vec_perm = KronVectorMPI(self.comm, self.M, self.N)
         else:
@@ -145,4 +148,4 @@ class KronVectorMPI:
             vec_perm.X_loc[:, t_begin:t_end] = buf
 
         MPI.Request.Waitall(reqs)
-        return vec_perm
+        return vec_perm, MPI.Wtime() - start_time

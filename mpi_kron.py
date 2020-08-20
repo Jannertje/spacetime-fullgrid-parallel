@@ -16,6 +16,7 @@ class LinearOperatorMPI:
         self.M = dofs_space
         self.num_applies = 0
         self.time_applies = 0
+        self.time_communication = 0
 
     def __matmul__(self, x):
         assert isinstance(x, KronVectorMPI)
@@ -29,7 +30,7 @@ class LinearOperatorMPI:
 
     def time_per_apply(self):
         assert (self.time_applies)
-        return self.time_applies / self.num_applies
+        return self.time_applies / self.num_applies, self.time_communication / self.num_applies
 
     def as_global_matrix(self):
         print('Expensive computation!')
@@ -73,11 +74,13 @@ class SumMPI(LinearOperatorMPI):
 
     def _matvec(self, vec_in, vec_out):
         assert (vec_in is not vec_out)
+        self.time_communication = 0
         Y_loc = np.zeros(vec_out.X_loc.shape)
 
         for linop in self.linops:
             linop._matvec(vec_in, vec_out)
             Y_loc += vec_out.X_loc
+            self.time_communication += linop.time_communication
 
         vec_out.X_loc = Y_loc
         return vec_out
@@ -93,9 +96,11 @@ class CompositeMPI(LinearOperatorMPI):
 
     def _matvec(self, vec_in, vec_out):
         assert (vec_in is not vec_out)
+        self.time_communication = 0
         Y = vec_in
         for linop in reversed(self.linops):
             Y = linop @ Y
+            self.time_communication += linop.time_communication
         vec_out.X_loc = Y.X_loc
         return vec_out
 
@@ -158,7 +163,8 @@ class TridiagKronIdentityMPI(LinearOperatorMPI):
         assert (self.N == vec_in.N and self.M == vec_in.M)
         assert (vec_in.X_loc.shape == vec_out.X_loc.shape)
 
-        bdr = vec_in.communicate_bdr()
+        bdr, bdr_time = vec_in.communicate_bdr()
+        self.time_communication += bdr_time
 
         X_loc_bdr = np.vstack([bdr[0], vec_in.X_loc, bdr[-1]])
         Y_loc = np.zeros(vec_out.X_loc.shape, dtype=np.float64)
@@ -213,13 +219,15 @@ class MatKronIdentityMPI(LinearOperatorMPI):
         assert (vec_in.X_loc.shape == vec_out.X_loc.shape)
 
         # First permute the vector.
-        vec_in_permuted = vec_in.permute()
+        vec_in_permuted, comm_time = vec_in.permute()
+        self.time_communication += comm_time
 
         # Apply the local kron.
         vec_in_permuted.X_loc[:] = (self.mat_time @ vec_in_permuted.X_loc.T).T
 
         # Permute the vector back.
-        vec_in_permuted.permute(vec_out)
+        _, comm_time, vec_in_permuted.permute(vec_out)
+        self.time_communication += comm_time
 
         return vec_out
 
@@ -250,7 +258,8 @@ class SparseKronIdentityMPI(LinearOperatorMPI):
             self.comm_dofs = sorted(comm_dofs)
 
         if len(self.comm_dofs):
-            X_recv = vec_in.communicate_dofs(self.comm_dofs)
+            X_recv, comm_time = vec_in.communicate_dofs(self.comm_dofs)
+            self.time_communication += comm_time
 
         # for every processor, loop over its own timesteps
         for t in range(vec_in.t_begin, vec_in.t_end):

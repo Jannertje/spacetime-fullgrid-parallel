@@ -169,10 +169,10 @@ class HeatEquationMPIShared:
         self.mem_after_mpi = mem()
 
     def print_time_per_apply(self):
-        print('W: ', self.W.time_per_apply())
-        print('S: ', self.S.time_per_apply())
-        print('WT:', self.WT.time_per_apply())
-        print('P: ', self.P.time_per_apply())
+        print('W:  {:.5f}\t{:.5f}'.format(*self.W.time_per_apply()))
+        print('S:  {:.5f}\t{:.5f}'.format(*self.S.time_per_apply()))
+        print('WT: {:.5f}\t{:.5f}'.format(*self.WT.time_per_apply()))
+        print('P:  {:.5f}\t{:.5f}'.format(*self.P.time_per_apply()))
 
 
 if __name__ == "__main__":
@@ -241,6 +241,7 @@ if __name__ == "__main__":
     u_mpi_P, iters = PCG(heat_eq_mpi.WT_S_W,
                          heat_eq_mpi.P,
                          heat_eq_mpi.rhs,
+                         kmax=5,
                          callback=cb)
 
     MPI.COMM_WORLD.Barrier()
