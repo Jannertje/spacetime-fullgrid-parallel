@@ -42,7 +42,7 @@ class HeatEquationMPI:
                  J_time=None,
                  precond='multigrid',
                  order=1,
-                 wavelettransform='mat'):
+                 wavelettransform='original'):
         start_time = MPI.Wtime()
         if J_time is None:
             J_time = J_space
@@ -120,7 +120,7 @@ class HeatEquationMPI:
         self.S = SumMPI(
             [self.A_MKM, self.L_MKA, self.LT_AKM, self.M_AKA, self.G_M])
 
-        if wavelettransform == 'mat':
+        if wavelettransform == 'original':
             self.W_t = WaveletTransformOp(self.J_time)
             self.W = MatKronIdentityMPI(self.W_t, self.M)
             self.WT = MatKronIdentityMPI(self.W_t.H, self.M)
@@ -128,7 +128,7 @@ class HeatEquationMPI:
             self.W_t = WaveletTransformOp(self.J_time, interleaved=True)
             self.W = MatKronIdentityMPI(self.W_t, self.M)
             self.WT = MatKronIdentityMPI(self.W_t.H, self.M)
-        elif wavelettransform == 'matfree':
+        elif wavelettransform == 'composite':
             self.W = WaveletTransformKronIdentityMPI(self.J_time, self.M)
             self.WT = TransposedWaveletTransformKronIdentityMPI(
                 self.J_time, self.M)
@@ -160,6 +160,9 @@ if __name__ == "__main__":
     parser.add_argument('--precond',
                         default='direct',
                         help='type of preconditioner')
+    parser.add_argument('--wavelettransform',
+                        default='original',
+                        help='type of preconditioner')
     parser.add_argument('--J_time',
                         type=int,
                         default=7,
@@ -171,6 +174,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     precond = args.precond
+    wavelettransform = args.wavelettransform
     J_time = args.J_time
     J_space = args.J_space
 
@@ -184,7 +188,8 @@ if __name__ == "__main__":
     MPI.COMM_WORLD.Barrier()
     heat_eq_mpi = HeatEquationMPI(J_space=J_space,
                                   J_time=J_time,
-                                  precond=precond)
+                                  precond=precond,
+                                  wavelettransform=wavelettransform)
     if rank == 0:
         print('\n\nCreating mesh with {} time refines and {} space refines.'.
               format(J_time, J_space))

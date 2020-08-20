@@ -266,6 +266,7 @@ class SparseKronIdentityMPI(LinearOperatorMPI):
                     vec_out.X_loc[t_, :] += coeff * X_recv[idx]
 
         if self.add_identity:
+            assert vec_out is not vec_in
             vec_out.X_loc += vec_in.X_loc
 
         return vec_out
