@@ -27,6 +27,7 @@ def mem():
 class HeatEquationMPIShared:
     def __init__(self, J_space=2, J_time=None, smoothsteps=3, vcycles=2):
         shared_comm = MPI.COMM_WORLD.Split_type(MPI.COMM_TYPE_SHARED)
+        self.shared_comm = shared_comm
 
         start_time = MPI.Wtime()
         if J_time is None:
@@ -79,13 +80,13 @@ class HeatEquationMPIShared:
                                    grad(u), grad(v)) * dx).assemble()
             for j in range(self.J_time + 1):
                 self.Cinv_j[j] = 2**j * self.M_x + self.A_x
-            self.mem_after_space = mem()
 
             # -- RHS --
             assert (len(data['g']) == 0)
             self.u0_t = LinForm(X.time, lambda v: v * ds('start')).assemble()
             self.u0_x = LinForm(X.space,
                                 lambda v: data['u0'] * v * dx).assemble()
+            self.mem_after_ngsolve = mem()
 
         # Set variables to according to the leader.
         self.N, self.M = shared_comm.bcast((self.N, self.M))
@@ -104,6 +105,7 @@ class HeatEquationMPIShared:
 
         self.u0_t = shared_numpy_array(self.u0_t, shared_comm)
         self.u0_x = shared_numpy_array(self.u0_x, shared_comm)
+        self.mem_after_shared_matrices = mem()
 
         # ---- Preconditioners in space ----
         hierarchy = MeshHierarchy(fes_x, shared_comm)
@@ -198,13 +200,14 @@ if __name__ == "__main__":
         print('N = {}. M = {}.'.format(heat_eq_mpi.N, heat_eq_mpi.M))
         print('Constructed bilinear forms in {} s.'.format(
             heat_eq_mpi.setup_time))
-        print('\nMemory after meshing: {}mb.'.format(
-            heat_eq_mpi.mem_after_meshing))
-        print('Memory after space: {}mb.'.format(heat_eq_mpi.mem_after_space))
+        print('Memory after ngsolve: {}mb.'.format(
+            heat_eq_mpi.mem_after_ngsolve))
+        print('Memory after shared mat: {}mb.'.format(
+            heat_eq_mpi.mem_after_shared_matrices))
         print('Memory after precond: {}mb.'.format(
             heat_eq_mpi.mem_after_precond))
-        print('Memory after construction: {}mb.'.format(mem()))
-        print('')
+    if rank < 2:
+        print('Memory {} after construction: {}mb.'.format(rank, mem()))
 
     # Solve.
     def cb(w, residual, k):
