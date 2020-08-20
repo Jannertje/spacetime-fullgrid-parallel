@@ -45,6 +45,7 @@ class HeatEquationMPI:
                  order=1,
                  wavelettransform='original',
                  smoothsteps=3,
+                 alpha=0.5,
                  vcycles=2):
         precond_ngsolve = precond != 'mg' and precond != 'pyamg'
         start_time = MPI.Wtime()
@@ -101,7 +102,7 @@ class HeatEquationMPI:
 
         # --- Preconditioner on X ---
         self.C_j = []
-        self.alpha = 0.5
+        self.alpha = alpha
         for j in range(self.J_time + 1):
             bf = BilForm(X.space,
                          bilform_lambda=lambda u, v:
@@ -206,6 +207,7 @@ if __name__ == "__main__":
                         type=int,
                         default=2,
                         help='number of vcycles')
+    parser.add_argument('--alpha', type=float, default=0.5, help='alpha')
 
     args = parser.parse_args()
     precond = args.precond
@@ -226,6 +228,7 @@ if __name__ == "__main__":
                                   precond=precond,
                                   smoothsteps=args.smoothsteps,
                                   vcycles=args.vcycles,
+                                  alpha=args.alpha,
                                   wavelettransform=wavelettransform)
     if rank == 0:
         print('\n\nCreating mesh with {} time refines and {} space refines.'.
