@@ -217,7 +217,7 @@ if __name__ == "__main__":
                                   J_time=J_time,
                                   precond=precond,
                                   smoothsteps=args.smoothsteps,
-                                  vcycles=args.vcycles)
+                                  vcycles=args.vcycles,
                                   wavelettransform=wavelettransform)
     if rank == 0:
         print('\n\nCreating mesh with {} time refines and {} space refines.'.
