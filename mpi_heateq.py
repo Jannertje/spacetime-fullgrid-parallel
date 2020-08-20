@@ -5,6 +5,7 @@ import sys
 import numpy as np
 import pyamg
 from ngsolve import H1, InnerProduct, Preconditioner, ds, dx, grad, ngsglobals
+from multigrid import MeshHierarchy, MultiGrid
 from scipy.sparse.linalg.interface import LinearOperator
 
 import psutil
@@ -42,7 +43,11 @@ class HeatEquationMPI:
                  J_time=None,
                  precond='multigrid',
                  order=1,
-                 wavelettransform='mat'):
+                 wavelettransform='mat',
+                 smoothsteps=3,
+                 vcycles=2):
+        precond_ngsolve = precond != 'mg' and precond != 'pyamg'
+
         start_time = MPI.Wtime()
         if J_time is None:
             J_time = J_space
@@ -53,6 +58,7 @@ class HeatEquationMPI:
                     H1(mesh_space, order=order, dirichlet=bc_space))
         self.N = len(X.time.fd)
         self.M = len(X.space.fd)
+        self.mem_after_meshing = mem()
 
         # --- TIME ---
         self.J_time = J_time
@@ -76,14 +82,22 @@ class HeatEquationMPI:
         A_x = BilForm(
             X.space,
             bilform_lambda=lambda u, v: InnerProduct(grad(u), grad(v)) * dx)
-        if precond != 'pyamg':
+        if precond_ngsolve:
             Kinv_x_pc = Preconditioner(A_x.bf, precond)
+        elif precond == 'mg':
+            hierarchy = MeshHierarchy(X.space)
         self.A_x = A_x.assemble()
 
-        if precond != 'pyamg':
+        if precond_ngsolve:
             self.Kinv_x = AsLinearOperator(Kinv_x_pc.mat, X.space.fd)
-        else:
+        elif precond == 'pyamg':
             self.Kinv_x = PyAMG(self.A_x)
+        else:
+            self.Kinv_x = MultiGrid(self.A_x,
+                                    hierarchy,
+                                    smoothsteps=smoothsteps,
+                                    vcycles=vcycles)
+        self.mem_after_space = mem()
 
         # --- Preconditioner on X ---
         self.C_j = []
@@ -92,19 +106,26 @@ class HeatEquationMPI:
             bf = BilForm(X.space,
                          bilform_lambda=lambda u, v:
                          (2**j * u * v + self.alpha * grad(u) * grad(v)) * dx)
-            if precond != 'pyamg':
+            if precond_ngsolve:
                 C = Preconditioner(bf.bf, precond)
             bf.bf.Assemble()
 
-            if precond != 'pyamg':
+            if precond_ngsolve:
                 self.C_j.append(AsLinearOperator(C.mat, X.space.fd))
-            else:
+            elif precond == 'pyamg':
                 self.C_j.append(PyAMG(bf.assemble()))
+            else:
+                self.C_j.append(
+                    MultiGrid(bf.assemble(),
+                              hierarchy,
+                              smoothsteps=smoothsteps,
+                              vcycles=vcycles))
 
         self.CAC_j = [
             CompositeLinOp([self.C_j[j], self.A_x, self.C_j[j]])
             for j in range(self.J_time + 1)
         ]
+        self.mem_after_precond = mem()
 
         # -- MPI objects --
         self.A_MKM = TridiagKronMatMPI(
@@ -133,7 +154,6 @@ class HeatEquationMPI:
             self.WT = TransposedWaveletTransformKronIdentityMPI(
                 self.J_time, self.M)
         self.P = BlockDiagMPI([self.CAC_j[j] for j in self.W.levels])
-
         self.WT_S_W = CompositeMPI([self.WT, self.S, self.W])
 
         # -- RHS --
@@ -142,8 +162,8 @@ class HeatEquationMPI:
         self.u0_x = LinForm(X.space, lambda v: data['u0'] * v * dx).assemble()
 
         self.rhs = KronVectorMPI(MPI.COMM_WORLD, self.N, self.M)
-        self.rhs.X_loc = np.kron(self.u0_t[self.rhs.t_begin:self.rhs.t_end],
-                                 self.u0_x).reshape(-1, self.M)
+        self.rhs.X_loc[:] = np.kron(self.u0_t[self.rhs.t_begin:self.rhs.t_end],
+                                    self.u0_x).reshape(-1, self.M)
 
         self.setup_time = MPI.Wtime() - start_time
 
@@ -158,7 +178,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Solve heatequation using MPI.')
     parser.add_argument('--precond',
-                        default='direct',
+                        default='multigrid',
                         help='type of preconditioner')
     parser.add_argument('--J_time',
                         type=int,
@@ -168,6 +188,14 @@ if __name__ == "__main__":
                         type=int,
                         default=7,
                         help='number of space refines')
+    parser.add_argument('--smoothsteps',
+                        type=int,
+                        default=3,
+                        help='number of smoothing steps')
+    parser.add_argument('--vcycles',
+                        type=int,
+                        default=2,
+                        help='number of vcycles')
 
     args = parser.parse_args()
     precond = args.precond
@@ -184,16 +212,28 @@ if __name__ == "__main__":
     MPI.COMM_WORLD.Barrier()
     heat_eq_mpi = HeatEquationMPI(J_space=J_space,
                                   J_time=J_time,
-                                  precond=precond)
+                                  precond=precond,
+                                  smoothsteps=args.smoothsteps,
+                                  vcycles=args.vcycles)
     if rank == 0:
         print('\n\nCreating mesh with {} time refines and {} space refines.'.
               format(J_time, J_space))
         print('MPI tasks: ', size)
-        print('Preconditioner: ', precond)
+        if precond == 'mg':
+            print('Preconditioner:', precond, 'smoothsteps:', args.smoothsteps,
+                  'vcycles:', args.vcycles)
+        else:
+            print('Preconditioner:', precond)
         print('N = {}. M = {}.'.format(heat_eq_mpi.N, heat_eq_mpi.M))
         print('Constructed bilinear forms in {} s.'.format(
             heat_eq_mpi.setup_time))
-        print('Total memory: {}mb'.format(mem()))
+        print('\nMemory after meshing: {}mb.'.format(
+            heat_eq_mpi.mem_after_meshing))
+        print('Memory after space: {}mb.'.format(heat_eq_mpi.mem_after_space))
+        print('Memory after precond: {}mb.'.format(
+            heat_eq_mpi.mem_after_precond))
+        print('Memory after construction: {}mb.'.format(mem()))
+        print('')
 
     # Solve.
     def cb(w, residual, k):
@@ -211,3 +251,4 @@ if __name__ == "__main__":
         print('Completed in {} PCG steps.'.format(iters))
         print('Total solve time: {}s.'.format(MPI.Wtime() - solve_time))
         heat_eq_mpi.print_time_per_apply()
+        print('Memory after solve: {}mb.'.format(mem()))

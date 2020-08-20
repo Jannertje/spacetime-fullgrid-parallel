@@ -25,7 +25,10 @@ class BilForm:
     def assemble(self):
         self.bf.Assemble()
         mat = sp.csr_matrix(self.bf.mat.CSR())
-        self.mat = mat[self.fes_out.fd, :].tocsc()[:, self.fes_in.fd].tocsr()
+        self.mat = mat[self.fes_out.FreeDofs(), :].tocsc()[:,
+                                                           self.fes_in.
+                                                           FreeDofs()].tocsr()
+        self.mat.eliminate_zeros()
         return self.mat
 
 
