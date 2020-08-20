@@ -176,6 +176,8 @@ class HeatEquationMPIShared:
 
 
 if __name__ == "__main__":
+    import scipy.special as sc
+    sc.seterr(all='raise')
     parser = argparse.ArgumentParser(
         description='Solve heatequation using MPI.')
     parser.add_argument('--J_time',

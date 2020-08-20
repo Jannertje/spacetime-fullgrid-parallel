@@ -92,8 +92,8 @@ class WaveletTransformOp(sp.linalg.LinearOperator):
             for j in range(1, self.J + 1):
                 N_coarse = 2**(j - 1) + 1
                 N_fine = 2**j + 1
-                y[:N_fine] = self.p[j] @ y[:N_coarse] + self.q[j] @ y[N_coarse:
-                                                                      N_fine]
+                y[:N_fine] = self.p[j] @ y[:N_coarse] + self.q[j] @ y[
+                    N_coarse:N_fine]
         return y
 
     def _rmatmat(self, x):
@@ -127,10 +127,10 @@ class LevelWaveletTransformOp(WaveletTransformOp):
     def _split(J, j, p, q):
         if j == 0: return sp.csr_matrix((2**J + 1, 2**J + 1))
         I = sp.eye(2**J + 1, format='csr')
-        mat = sp.eye(2**J + 1, format='csr')
+        mat = sp.eye(2**J + 1, format='lil')
         S = 2**(J - j)
         mat[::S] = p @ I[::S][::2] + q @ I[::S][1::2]
-        mat -= sp.eye(2**J + 1, format='csr')
+        mat -= sp.eye(2**J + 1)
         return sp.csr_matrix(mat)
 
     def _matmat(self, x):
