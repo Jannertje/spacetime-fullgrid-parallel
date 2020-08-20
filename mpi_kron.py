@@ -99,6 +99,7 @@ class CompositeMPI(LinearOperatorMPI):
     def _matvec(self, vec_in, vec_out):
         assert (vec_in is not vec_out)
         self.time_communication = 0
+        vec_out.X_loc = None
         Y = vec_in
         for linop in reversed(self.linops):
             Y = linop @ Y
@@ -274,7 +275,8 @@ class SparseKronIdentityMPI(LinearOperatorMPI):
             assert vec_out is not vec_in
             vec_out.X_loc[:] = vec_in.X_loc
         else:
-            vec_out.X_loc[:] = np.zeros(vec_out.X_loc.shape, dtype=np.float64)
+            vec_out.X_loc = None
+            vec_out.X_loc = np.zeros(vec_in.X_loc.shape, dtype=np.float64)
 
         if len(self.comm_dofs):
             X_recv, comm_time = vec_in.communicate_dofs(self.comm_dofs)

@@ -75,6 +75,10 @@ class KronVectorMPI:
         vec_out.X_loc = self.X_loc - other.X_loc
         return vec_out
 
+    def __imul__(self, other):
+        self.X_loc *= other
+        return self
+
     def __rmul__(self, other):
         vec_out = KronVectorMPI(self.dofs_distr)
         vec_out.X_loc[:] = other * self.X_loc
