@@ -30,6 +30,7 @@ class HeatEquationMPIShared:
                  J_time=None,
                  wavelettransform='original',
                  smoothsteps=3,
+                 alpha=0.5,
                  vcycles=2):
         shared_comm = MPI.COMM_WORLD.Split_type(MPI.COMM_TYPE_SHARED)
         self.shared_comm = shared_comm
@@ -39,7 +40,7 @@ class HeatEquationMPIShared:
             J_time = J_space
         self.J_time = J_time
         self.J_space = J_space
-        self.alpha = 0.5
+        self.alpha = alpha
 
         # Set variables to zero.
         self.N = self.M = None
@@ -85,7 +86,7 @@ class HeatEquationMPIShared:
                                bilform_lambda=lambda u, v: InnerProduct(
                                    grad(u), grad(v)) * dx).assemble()
             for j in range(self.J_time + 1):
-                self.Cinv_j[j] = 2**j * self.M_x + self.A_x
+                self.Cinv_j[j] = 2**j * self.M_x + self.alpha * self.A_x
 
             # -- RHS --
             assert (len(data['g']) == 0)
@@ -208,6 +209,7 @@ if __name__ == "__main__":
     parser.add_argument('--wavelettransform',
                         default='original',
                         help='type of wavelettransform')
+    parser.add_argument('--alpha', type=float, default=0.5, help='alpha')
 
     args = parser.parse_args()
     J_time = args.J_time
@@ -223,6 +225,7 @@ if __name__ == "__main__":
                                         J_time=J_time,
                                         smoothsteps=args.smoothsteps,
                                         vcycles=args.vcycles,
+                                        alpha=args.alpha,
                                         wavelettransform=args.wavelettransform)
     if rank == 0:
         print('\n\nCreating mesh with {} time refines and {} space refines.'.
