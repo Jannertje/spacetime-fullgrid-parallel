@@ -177,6 +177,7 @@ class HeatEquationMPI:
         print('W: ', self.W.time_per_apply())
         print('S: ', self.S.time_per_apply())
         print('WT:', self.WT.time_per_apply())
+        print('WTSWT:', self.WT_S_W.time_per_apply())
         print('P: ', self.P.time_per_apply())
 
 

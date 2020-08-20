@@ -4,7 +4,7 @@ import scipy.sparse
 from mpi4py import MPI
 from mpi_kron import (BlockDiagMPI, CompositeMPI, IdentityKronMatMPI,
                       LinearOperatorMPI, MatKronIdentityMPI,
-                      TridiagKronIdentityMPI, as_matrix)
+                      SparseKronIdentityMPI, TridiagKronIdentityMPI, as_matrix)
 from mpi_vector import KronVectorMPI, DofDistributionMPI
 
 
@@ -62,6 +62,18 @@ def test_tridiag_kron_mat():
     M = 3
     dofs_distr = DofDistributionMPI(MPI.COMM_WORLD, stiff_time.shape[0], M)
     T_M = TridiagKronIdentityMPI(dofs_distr, stiff_time)
+    linop_test_MPI(T_M, np.kron(stiff_time.toarray(), np.eye(M)))
+
+
+def test_sparse_kron_mat():
+    mat = np.array([[3.5, 13., 28.5, 50.,
+                     77.5], [-5., -23., -53., -95., -149.],
+                    [2.5, 11., 25.5, 46., 72.5]])
+    stiff_time = scipy.sparse.spdiags(mat, (1, 0, -1), 5, 5).T.copy().tocsr()
+
+    M = 3
+    dofs_distr = DofDistributionMPI(MPI.COMM_WORLD, stiff_time.shape[0], M)
+    T_M = SparseKronIdentityMPI(dofs_distr, stiff_time)
     linop_test_MPI(T_M, np.kron(stiff_time.toarray(), np.eye(M)))
 
 

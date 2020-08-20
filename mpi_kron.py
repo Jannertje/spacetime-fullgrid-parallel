@@ -266,6 +266,12 @@ class SparseKronIdentityMPI(LinearOperatorMPI):
         assert (self.N == vec_in.N and self.M == vec_in.M)
         assert (vec_in.X_loc.shape == vec_out.X_loc.shape)
 
+        if self.add_identity:
+            assert vec_out is not vec_in
+            vec_out.X_loc[:] = vec_in.X_loc
+        else:
+            vec_out.X_loc[:] = np.zeros(vec_out.X_loc.shape, dtype=np.float64)
+
         if len(self.comm_dofs):
             X_recv, comm_time = vec_in.communicate_dofs(self.comm_dofs)
             self.time_communication += comm_time
@@ -280,9 +286,5 @@ class SparseKronIdentityMPI(LinearOperatorMPI):
             else:
                 # The data is in X_recv
                 vec_out.X_loc[t_, :] += coeff * X_recv[idx]
-
-        if self.add_identity:
-            assert vec_out is not vec_in
-            vec_out.X_loc += vec_in.X_loc
 
         return vec_out
