@@ -28,6 +28,7 @@ class HeatEquationMPIShared:
     def __init__(self,
                  J_space=2,
                  J_time=None,
+                 problem='square',
                  wavelettransform='original',
                  smoothsteps=3,
                  alpha=0.3,
