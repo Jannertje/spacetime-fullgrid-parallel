@@ -1,0 +1,108 @@
+Creating mesh with 10 time refines and 9 space refines.
+MPI tasks:  32
+Arguments: Namespace(J_space=9, J_time=10, alpha=0.3, smoothsteps=3, vcycles=2, wavelettransform='composite')
+N = 1025. M = 1046529.
+Constructed bilinear forms in 56.36372114997357 s.
+Memory after ngsolve: 2642.8125mb.
+Memory after shared mat: 2421.1953125mb.
+Memory after precond: 3421.53125mb.
+Memory 0 after construction: 2992.8203125mb.
+Memory 1 after construction: 2516.125mb.
+...................
+Completed in 19 PCG steps.
+Total solve time: 2626.7369225879665s.
+W:  2.45491	0.19695
+S:  82.89867	0.73408
+WT: 2.87053	0.96676
+P:  42.99986	0.00000
+
+WTSW: 88.22629	1.89778
+Memory after solve: 3264.4375mb.
+
+
+Creating mesh with 10 time refines and 9 space refines.
+MPI tasks:  64
+Arguments: Namespace(J_space=9, J_time=10, alpha=0.3, smoothsteps=3, vcycles=2, wavelettransform='composite')
+N = 1025. M = 1046529.
+Constructed bilinear forms in 47.38651168392971 s.
+Memory after ngsolve: 2642.55078125mb.
+Memory after shared mat: 2418.6875mb.
+Memory after precond: 3420.80859375mb.
+Memory 0 after construction: 2865.359375mb.
+Memory 1 after construction: 2388.85546875mb.
+...................
+Completed in 19 PCG steps.
+Total solve time: 1325.3246368581895s.
+W:  1.37878	0.16216
+S:  31.05891	0.33514
+WT: 11.78155	10.93486
+P:  15.88158	0.00000
+
+WTSW: 44.22079	11.43216
+Memory after solve: 2873.625mb.
+
+
+Creating mesh with 10 time refines and 9 space refines.
+MPI tasks:  128
+Arguments: Namespace(J_space=9, J_time=10, alpha=0.3, smoothsteps=3, vcycles=2, wavelettransform='composite')
+N = 1025. M = 1046529.
+Constructed bilinear forms in 46.71208418882452 s.
+Memory after ngsolve: 2676.27734375mb.
+Memory after shared mat: 2435.8203125mb.
+Memory after precond: 3420.81640625mb.
+Memory 0 after construction: 2801.38671875mb.
+Memory 1 after construction: 2324.18359375mb.
+...................
+Completed in 19 PCG steps.
+Total solve time: 662.6188784269616s.
+W:  0.73927	0.18091
+S:  15.56576	0.16257
+WT: 6.18283	5.74235
+P:  8.01296	0.00000
+
+WTSW: 22.48916	6.08584
+Memory after solve: 2801.6171875mb.
+
+
+Creating mesh with 10 time refines and 9 space refines.
+MPI tasks:  256
+Arguments: Namespace(J_space=9, J_time=10, alpha=0.3, smoothsteps=3, vcycles=2, wavelettransform='composite')
+N = 1025. M = 1046529.
+Constructed bilinear forms in 46.58403799496591 s.
+Memory after ngsolve: 2643.27734375mb.
+Memory after shared mat: 2420.98046875mb.
+Memory after precond: 3422.4453125mb.
+Memory 0 after construction: 2770.06640625mb.
+Memory 1 after construction: 2292.34375mb.
+...................
+Completed in 19 PCG steps.
+Total solve time: 373.71585951489396s.
+W:  0.43622	0.18211
+S:  7.51734	0.13167
+WT: 4.10225	3.92014
+P:  3.90561	0.00000
+
+WTSW: 12.06253	4.23392
+Memory after solve: 2762.51953125mb.
+
+
+Creating mesh with 10 time refines and 9 space refines.
+MPI tasks:  512
+Arguments: Namespace(J_space=9, J_time=10, alpha=0.3, smoothsteps=3, vcycles=2, wavelettransform='composite')
+N = 1025. M = 1046529.
+Constructed bilinear forms in 47.00377383315936 s.
+Memory after ngsolve: 2643.61328125mb.
+Memory after shared mat: 2420.19921875mb.
+Memory after precond: 3421.89453125mb.
+Memory 0 after construction: 2777.35546875mb.
+Memory 1 after construction: 2277.58203125mb.
+...................
+Completed in 19 PCG steps.
+Total solve time: 198.47839487390593s.
+W:  0.28173	0.17368
+S:  3.74863	0.04978
+WT: 2.38941	2.29619
+P:  2.03034	0.00000
+
+WTSW: 6.42298	2.51965
+Memory after solve: 2777.35546875mb.
