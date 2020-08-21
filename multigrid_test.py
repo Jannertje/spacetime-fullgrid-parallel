@@ -10,7 +10,7 @@ from scipy.sparse import csr_matrix
 from bilform import BilForm
 from lanczos import Lanczos
 from linop import AsLinearOperator
-from mesh import construct_2d_square_mesh
+from mesh import construct_2d_square_mesh, construct_3d_cube_mesh
 from multigrid import MeshHierarchy, PETScSMoother, Smoother, MultiGrid
 from mpi_kron import as_matrix
 
@@ -18,30 +18,29 @@ ngsglobals.msg_level = 0
 
 
 def test_prolongation():
-    mesh_2, bc = construct_2d_square_mesh(2)
-    fes_2 = H1(mesh_2, order=1, dirichlet=bc)
-    A_2_bf = BilForm(
-        fes_2, bilform_lambda=lambda u, v: InnerProduct(grad(u), grad(v)) * dx)
-    A_2 = A_2_bf.assemble()
+    for meshfn in [construct_2d_square_mesh, construct_3d_cube_mesh]:
+        mesh_2, bc = meshfn(2)
+        fes_2 = H1(mesh_2, order=1, dirichlet=bc)
+        A_2_bf = BilForm(
+            fes_2,
+            bilform_lambda=lambda u, v: InnerProduct(grad(u), grad(v)) * dx)
+        A_2 = A_2_bf.assemble()
 
-    A_1 = BilForm(H1(construct_2d_square_mesh(1)[0],
-                     order=1,
-                     dirichlet="default"),
-                  bilform_lambda=lambda u, v: InnerProduct(grad(u), grad(v)) *
-                  dx).assemble()
+        A_1 = BilForm(H1(meshfn(1)[0], order=1, dirichlet="default"),
+                      bilform_lambda=lambda u, v: InnerProduct(
+                          grad(u), grad(v)) * dx).assemble()
 
-    A_0 = BilForm(H1(construct_2d_square_mesh(0)[0],
-                     order=1,
-                     dirichlet="default"),
-                  bilform_lambda=lambda u, v: InnerProduct(grad(u), grad(v)) *
-                  dx).assemble()
+        A_0 = BilForm(H1(meshfn(0)[0], order=1, dirichlet="default"),
+                      bilform_lambda=lambda u, v: InnerProduct(
+                          grad(u), grad(v)) * dx).assemble()
 
-    hierarch = MeshHierarchy(fes_2)
-    A_mats = [A_0, A_1, A_2]
-    for j in range(hierarch.J):
-        assert np.allclose(
-            as_matrix(hierarch.R_mats[j] @ A_mats[j + 1] @ hierarch.P_mats[j]),
-            as_matrix(A_mats[j]))
+        hierarch = MeshHierarchy(fes_2)
+        A_mats = [A_0, A_1, A_2]
+        for j in range(hierarch.J):
+            assert np.allclose(
+                as_matrix(
+                    hierarch.R_mats[j] @ A_mats[j + 1] @ hierarch.P_mats[j]),
+                as_matrix(A_mats[j]))
 
 
 def test_smoother():

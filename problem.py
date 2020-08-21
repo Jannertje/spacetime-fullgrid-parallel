@@ -4,13 +4,13 @@ from ngsolve import mpi_world
 from mesh import *
 
 
-def neumuller_smears(nrefines, N_time=None):
+def neumuller_smears(J_space, J_time=None):
     #u(t,x,y,z) =e^(−3π2t)sin(πx) sin(πy) sin(πz).
-    mesh_space, bc = construct_3d_cube_mesh(nrefines=nrefines)
-    if not N_time:
-        N_time = 2**int(
-            np.log(mesh_space.nv**(1.0 / mesh_space.dim)) / np.log(2) + 0.5)
-    # EIGENLIJK T=0.1 maar dat verneukt de solver
+    mesh_space, bc = construct_3d_cube_mesh(nrefines=J_space)
+    if not J_time:
+        J_time = J_space
+
+    N_time = 2**int(J_time + 0.5)
     mesh_time = construct_interval(N=N_time)
 
     from ngsolve import sin, x, y, z
@@ -58,3 +58,12 @@ def square(J_space, J_time=None):
     from ngsolve import sin, x, y
     data = {'g': [], 'u0': sin(np.pi * x) * sin(np.pi * y)}
     return mesh_space, bc, mesh_time, data, "square"
+
+
+def problem_helper(problem, J_space, J_time=None):
+    if problem == 'square':
+        return square(J_space, J_time)
+    elif problem == 'ns':
+        return neumuller_smears(J_space, J_time)
+    else:
+        assert (False)

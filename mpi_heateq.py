@@ -18,7 +18,7 @@ from mpi4py import MPI
 from mpi_kron import (BlockDiagMPI, CompositeMPI, MatKronIdentityMPI, SumMPI,
                       TridiagKronMatMPI)
 from mpi_vector import KronVectorMPI, DofDistributionMPI
-from problem import square
+from problem import problem_helper
 from wavelets import (TransposedWaveletTransformKronIdentityMPI,
                       WaveletTransformKronIdentityMPI, WaveletTransformOp)
 
@@ -43,6 +43,7 @@ class HeatEquationMPI:
                  J_time=None,
                  precond='multigrid',
                  order=1,
+                 problem='square',
                  wavelettransform='original',
                  smoothsteps=3,
                  alpha=0.3,
@@ -52,8 +53,9 @@ class HeatEquationMPI:
         if J_time is None:
             J_time = J_space
 
-        mesh_space, bc_space, mesh_time, data, fn = square(J_space=J_space,
-                                                           J_time=J_time)
+        mesh_space, bc_space, mesh_time, data, fn = problem_helper(
+            problem, J_space=J_space, J_time=J_time)
+
         X = KronFES(H1(mesh_time, order=order),
                     H1(mesh_space, order=order, dirichlet=bc_space))
         self.N = len(X.time.fd)
@@ -185,6 +187,9 @@ class HeatEquationMPI:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='Solve heatequation using MPI.')
+    parser.add_argument('--problem',
+                        default='square',
+                        help='problem type (square, ns)')
     parser.add_argument('--precond',
                         default='multigrid',
                         help='type of preconditioner')
@@ -193,11 +198,11 @@ if __name__ == "__main__":
                         help='type of preconditioner')
     parser.add_argument('--J_time',
                         type=int,
-                        default=7,
+                        default=4,
                         help='number of time refines')
     parser.add_argument('--J_space',
                         type=int,
-                        default=7,
+                        default=4,
                         help='number of space refines')
     parser.add_argument('--smoothsteps',
                         type=int,
@@ -226,6 +231,7 @@ if __name__ == "__main__":
     heat_eq_mpi = HeatEquationMPI(J_space=J_space,
                                   J_time=J_time,
                                   precond=precond,
+                                  problem=args.problem,
                                   smoothsteps=args.smoothsteps,
                                   vcycles=args.vcycles,
                                   alpha=args.alpha,

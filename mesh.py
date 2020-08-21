@@ -5,11 +5,12 @@ def construct_3d_cube_mesh(nrefines=1):
     from netgen.csg import OrthoBrick, Pnt, CSGeometry
     cube = OrthoBrick(Pnt(0, 0, 0), Pnt(1, 1, 1))
     geo = CSGeometry()
-    geo.Add(cube, maxh=0.4)
+    geo.Add(cube, maxh=1)
     ngmesh = geo.GenerateMesh()
-    for _ in range(nrefines):
-        ngmesh.Refine()
+    ngmesh.Refine()
     mesh = Mesh(ngmesh)
+    for _ in range(nrefines):
+        mesh.Refine()
     return mesh, "default"
 
 

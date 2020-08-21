@@ -11,7 +11,7 @@ from mpi_kron import (BlockDiagMPI, CompositeMPI, IdentityMPI,
                       MatKronIdentityMPI, SumMPI, TridiagKronMatMPI, as_matrix)
 from mpi_kron_test import linearity_test_MPI, linop_test_MPI
 from mpi_vector import KronVectorMPI, DofDistributionMPI
-from problem import square
+from problem import square, problem_helper
 
 refines = 2
 
@@ -164,28 +164,36 @@ def linop_test_apply_MPI(linop_mpi, linop):
 
 
 def test_demo():
-    refines = 2
-    heat_eq_mpi = HeatEquationMPI(refines, precond='direct')
+    for problem in ['square', 'ns']:
+        refines = 2
+        heat_eq_mpi = HeatEquationMPI(refines,
+                                      precond='direct',
+                                      problem=problem)
 
-    _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines), precond='direct')
-    linop_test_MPI(heat_eq_mpi.WT_S_W, as_matrix(WT @ S @ W))
-    linop_test_MPI(heat_eq_mpi.P, as_matrix(P))
-
-    for refines in range(2, 6):
-        heat_eq_mpi = HeatEquationMPI(refines, precond='direct')
-        linearity_test_MPI(heat_eq_mpi.S)
-        linearity_test_MPI(heat_eq_mpi.W)
-        linearity_test_MPI(heat_eq_mpi.WT)
-        linearity_test_MPI(heat_eq_mpi.WT_S_W)
-        linearity_test_MPI(heat_eq_mpi.P)
-
-        _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines),
+        _, _, WT, S, W, _, P, _, _, _, _ = demo(*problem_helper(
+            problem, refines),
                                                 precond='direct')
-        linop_test_apply_MPI(heat_eq_mpi.S, S)
-        linop_test_apply_MPI(heat_eq_mpi.W, W)
-        linop_test_apply_MPI(heat_eq_mpi.WT, WT)
-        linop_test_apply_MPI(heat_eq_mpi.WT_S_W, WT @ S @ W)
-        linop_test_apply_MPI(heat_eq_mpi.P, P)
+        linop_test_MPI(heat_eq_mpi.WT_S_W, as_matrix(WT @ S @ W))
+        linop_test_MPI(heat_eq_mpi.P, as_matrix(P))
+
+        for refines in range(1, 3):
+            heat_eq_mpi = HeatEquationMPI(refines,
+                                          precond='direct',
+                                          problem=problem)
+            linearity_test_MPI(heat_eq_mpi.S)
+            linearity_test_MPI(heat_eq_mpi.W)
+            linearity_test_MPI(heat_eq_mpi.WT)
+            linearity_test_MPI(heat_eq_mpi.WT_S_W)
+            linearity_test_MPI(heat_eq_mpi.P)
+
+            _, _, WT, S, W, _, P, _, _, _, _ = demo(*problem_helper(
+                problem, refines),
+                                                    precond='direct')
+            linop_test_apply_MPI(heat_eq_mpi.S, S)
+            linop_test_apply_MPI(heat_eq_mpi.W, W)
+            linop_test_apply_MPI(heat_eq_mpi.WT, WT)
+            linop_test_apply_MPI(heat_eq_mpi.WT_S_W, WT @ S @ W)
+            linop_test_apply_MPI(heat_eq_mpi.P, P)
 
 
 def test_preconditioner():

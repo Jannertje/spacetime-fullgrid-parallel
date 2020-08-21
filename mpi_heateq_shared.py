@@ -54,11 +54,11 @@ class HeatEquationMPIShared:
             from ngsolve import H1, InnerProduct, Preconditioner, ds, dx, grad, ngsglobals
             from bilform import BilForm
             from fespace import KronFES
-            from problem import square
+            from problem import problem_helper
             from linform import LinForm
             ngsglobals.msg_level = 0
-            mesh_space, bc_space, mesh_time, data, fn = square(J_space=J_space,
-                                                               J_time=J_time)
+            mesh_space, bc_space, mesh_time, data, fn = problem_helper(
+                problem, J_space=J_space, J_time=J_time)
             X = KronFES(H1(mesh_time, order=1),
                         H1(mesh_space, order=1, dirichlet=bc_space))
             self.N = len(X.time.fd)
@@ -190,6 +190,9 @@ if __name__ == "__main__":
     sc.seterr(all='raise')
     parser = argparse.ArgumentParser(
         description='Solve heatequation using MPI.')
+    parser.add_argument('--problem',
+                        default='square',
+                        help='problem type (square, ns)')
     parser.add_argument('--J_time',
                         type=int,
                         default=7,
@@ -223,6 +226,7 @@ if __name__ == "__main__":
 
     heat_eq_mpi = HeatEquationMPIShared(J_space=J_space,
                                         J_time=J_time,
+                                        problem=args.problem,
                                         smoothsteps=args.smoothsteps,
                                         vcycles=args.vcycles,
                                         alpha=args.alpha,
