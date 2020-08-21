@@ -174,7 +174,7 @@ class TransposedWaveletTransformKronIdentityMPI(CompositeMPI):
 
 if __name__ == "__main__":
     J_time = 9
-    M = 65025
+    M = 50
     N = 513
     start_time = MPI.Wtime()
     W = WaveletTransformKronIdentityMPI(J_time, M)

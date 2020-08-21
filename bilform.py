@@ -63,7 +63,7 @@ def WaveletTransform(fes):
             KronLinOp(T.T, sp.eye(len(fes.space.fd))))
 
 
-def XPreconditioner(fes, precond='multigrid', alpha=0.5):
+def XPreconditioner(fes, precond='multigrid', alpha=0.3):
     J = int(np.log(fes.time.mesh.ne) / np.log(2))
     K_mus = []
     u, v = fes.space.TnT()

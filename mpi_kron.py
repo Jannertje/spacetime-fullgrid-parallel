@@ -157,15 +157,31 @@ class TridiagKronIdentityMPI(LinearOperatorMPI):
         for t, row in enumerate(mat_time):
             assert set(row.indices).issubset(
                 set(range(max(0, t - 1), min(t + 2, N))))
+
         coo_mat = mat_time.tocoo()
 
-        sliced_mat = list(
-            filter(lambda rdc: dofs_distr.t_begin <= rdc[0] < dofs_distr.t_end,
-                   zip(coo_mat.row, coo_mat.col, coo_mat.data)))
-        if sliced_mat:
-            self.row, self.col, self.data = zip(*sliced_mat)
-        else:
-            self.row = self.col = self.data = []
+        # Create a sliced up matrix.
+        row, col, val = [], [], []
+        for r, c, v in zip(coo_mat.row, coo_mat.col, coo_mat.data):
+            if dofs_distr.t_begin <= r < dofs_distr.t_end:
+                row.append(r - dofs_distr.t_begin)
+                col.append(c - dofs_distr.t_begin + 1)
+                val.append(v)
+
+        sliced_mat = scipy.sparse.csr_matrix(
+            (val, (row, col)),
+            shape=(dofs_distr.t_end - dofs_distr.t_begin,
+                   dofs_distr.t_end - dofs_distr.t_begin + 2))
+
+        # Now turn this matrix apart in 3 parts.
+        self.inner_mat = sliced_mat[1:-1, :]
+        self.top_row = sliced_mat[0, :]
+        self.bottom_row = sliced_mat[-1, :]
+
+        # Create a local vector containing an enlarged number of dofs.
+        self.X_loc_bdr = np.zeros(
+            (dofs_distr.t_end - dofs_distr.t_begin + 2, dofs_distr.M),
+            dtype=np.float64)
 
         super().__init__(dofs_distr)
 
@@ -174,19 +190,36 @@ class TridiagKronIdentityMPI(LinearOperatorMPI):
         assert (self.N == vec_in.N and self.M == vec_in.M)
         assert (vec_in.X_loc.shape == vec_out.X_loc.shape)
 
-        bdr, bdr_time = vec_in.communicate_bdr()
-        self.time_communication += bdr_time
+        # Communicate.
+        reqs = []
+        if vec_in.rank > 0:
+            reqs.append(
+                vec_in.dofs_distr.comm.Isend(vec_in.X_loc[0, :],
+                                             vec_in.rank - 1))
+            reqs.append(
+                vec_in.dofs_distr.comm.Irecv(self.X_loc_bdr[0, :],
+                                             source=vec_in.rank - 1))
 
-        X_loc_bdr = np.vstack([bdr[0], vec_in.X_loc, bdr[-1]])
-        Y_loc = np.zeros(vec_out.X_loc.shape, dtype=np.float64)
+        if vec_in.rank + 1 < vec_in.dofs_distr.size:
+            reqs.append(
+                vec_in.dofs_distr.comm.Isend(vec_in.X_loc[-1, :],
+                                             vec_in.rank + 1))
+            reqs.append(
+                vec_in.dofs_distr.comm.Irecv(self.X_loc_bdr[-1, :],
+                                             source=vec_in.rank + 1))
 
-        # for every processor, loop over its own timesteps
-        for t, idx, coeff in zip(self.row, self.col, self.data):
-            Y_loc[t -
-                  vec_out.t_begin, :] += coeff * X_loc_bdr[idx -
-                                                           vec_in.t_begin + 1]
+        # Copy input and apply the inner matrix.
+        self.X_loc_bdr[1:-1] = vec_in.X_loc
+        vec_out.X_loc[1:-1] = self.inner_mat @ self.X_loc_bdr
 
-        vec_out.X_loc = Y_loc
+        # Wait for data communication to complete.
+        start_time = MPI.Wtime()
+        MPI.Request.Waitall(reqs)
+        self.time_communication += MPI.Wtime() - start_time
+
+        # Apply top/bottom rows
+        vec_out.X_loc[0, :] = self.top_row @ self.X_loc_bdr
+        vec_out.X_loc[-1, :] = self.bottom_row @ self.X_loc_bdr
         return vec_out
 
 
@@ -271,6 +304,10 @@ class SparseKronIdentityMPI(LinearOperatorMPI):
         assert (self.N == vec_in.N and self.M == vec_in.M)
         assert (vec_in.X_loc.shape == vec_out.X_loc.shape)
 
+        # Start up communication.
+        if len(self.comm_dofs):
+            X_recv, reqs = vec_in.communicate_dofs(self.comm_dofs)
+
         if self.add_identity:
             assert vec_out is not vec_in
             vec_out.X_loc[:] = vec_in.X_loc
@@ -278,9 +315,11 @@ class SparseKronIdentityMPI(LinearOperatorMPI):
             vec_out.X_loc = None
             vec_out.X_loc = np.zeros(vec_in.X_loc.shape, dtype=np.float64)
 
+        # Wait for communication to complete.
         if len(self.comm_dofs):
-            X_recv, comm_time = vec_in.communicate_dofs(self.comm_dofs)
-            self.time_communication += comm_time
+            start_time = MPI.Wtime()
+            MPI.Request.Waitall(reqs)
+            self.time_communication += MPI.Wtime() - start_time
 
         # for every processor, loop over its own timesteps
         for t, idx, coeff in zip(self.row, self.col, self.data):
@@ -290,7 +329,7 @@ class SparseKronIdentityMPI(LinearOperatorMPI):
                 # The data is in X_loc
                 vec_out.X_loc[t_, :] += coeff * vec_in.X_loc[idx_]
             else:
-                # The data is in X_recv
+
                 vec_out.X_loc[t_, :] += coeff * X_recv[idx]
 
         return vec_out

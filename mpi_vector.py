@@ -126,9 +126,8 @@ class KronVectorMPI:
         return bdr, MPI.Wtime() - start_time
 
     def communicate_dofs(self, comm_dofs):
-        start_time = MPI.Wtime()
-        reqs = []
         X_recv = {recv: np.zeros(self.M) for (send, recv) in comm_dofs}
+        reqs = []
         for send, recv in comm_dofs:
             reqs.append(
                 self.dofs_distr.comm.Isend(self.X_loc[send - self.t_begin, :],
@@ -140,8 +139,7 @@ class KronVectorMPI:
                     source=self.dofs_distr.dof2proc[recv],
                     tag=recv))
 
-        MPI.Request.Waitall(reqs)
-        return X_recv, MPI.Wtime() - start_time
+        return X_recv, reqs
 
     def dot(self, vec_other):
         assert (isinstance(vec_other, KronVectorMPI))
