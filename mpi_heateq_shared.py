@@ -221,6 +221,7 @@ if __name__ == "__main__":
 
     rank = MPI.COMM_WORLD.Get_rank()
     size = MPI.COMM_WORLD.Get_size()
+    data = {'rank': rank, 'size': size}
     if size > 2**J_time + 1:
         print('Too many MPI processors!')
         sys.exit('1')
@@ -233,6 +234,9 @@ if __name__ == "__main__":
                                         alpha=args.alpha,
                                         wavelettransform=args.wavelettransform)
     if rank == 0:
+        data['args'] = vars(args)
+        data['N'] = heat_eq_mpi.N
+        data['M'] = heat_eq_mpi.M
         print('\n\nCreating mesh with {} time refines and {} space refines.'.
               format(J_time, J_space))
         print('MPI tasks: ', size)
@@ -246,6 +250,7 @@ if __name__ == "__main__":
             heat_eq_mpi.mem_after_shared_matrices))
         print('Memory after precond: {}mb.'.format(
             heat_eq_mpi.mem_after_precond))
+    data['mem_after_construction'] = mem()
     if rank < 2:
         print('Memory {} after construction: {}mb.'.format(rank, mem()))
 
@@ -260,6 +265,18 @@ if __name__ == "__main__":
                          heat_eq_mpi.rhs,
                          callback=cb)
 
+    data['solve_time'] = MPI.Wtime() - solve_time
+    data['mem_after_solve'] = mem()
+    data['iters'] = iters
+    for name, op in [('W', heat_eq_mpi.W), ('S', heat_eq_mpi.S),
+                     ('WT', heat_eq_mpi.WT), ('P', heat_eq_mpi.P),
+                     ('WT_S_W', heat_eq_mpi.WT_S_W)]:
+        data[name] = {
+            'time_applies': op.time_applies,
+            'time_communication': op.time_communication,
+            'num_applies': op.num_applies
+        }
+
     MPI.COMM_WORLD.Barrier()
     if rank == 0:
         print('')
@@ -267,3 +284,7 @@ if __name__ == "__main__":
         print('Total solve time: {}s.'.format(MPI.Wtime() - solve_time))
         heat_eq_mpi.print_time_per_apply()
         print('Memory after solve: {}mb.'.format(mem()))
+
+    data = MPI.COMM_WORLD.gather(data, root=0)
+    if rank == 0:
+        print('\ndata = {}'.format(data))
