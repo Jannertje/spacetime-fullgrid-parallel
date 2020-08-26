@@ -1,4 +1,5 @@
 import argparse
+import zlib
 import pickle
 import base64
 import os
@@ -290,4 +291,4 @@ if __name__ == "__main__":
     data = MPI.COMM_WORLD.gather(data, root=0)
     if rank == 0:
         print('\ndata: {}'.format(
-            str(base64.b64encode(pickle.dumps(data)), 'ascii')))
+            str(base64.b64encode(zlib.compress(pickle.dumps(data))), 'ascii')))
