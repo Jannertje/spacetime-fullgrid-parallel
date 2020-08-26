@@ -253,9 +253,8 @@ if __name__ == "__main__":
             heat_eq_mpi.mem_after_shared_matrices))
         print('Memory after precond: {}mb.'.format(
             heat_eq_mpi.mem_after_precond))
+        print('Memory after construction: {}mb.'.format(mem()))
     data['mem_after_construction'] = mem()
-    if rank < 2:
-        print('Memory {} after construction: {}mb.'.format(rank, mem()))
 
     # Solve.
     def cb(w, residual, k):
