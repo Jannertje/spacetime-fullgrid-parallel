@@ -289,5 +289,5 @@ if __name__ == "__main__":
 
     data = MPI.COMM_WORLD.gather(data, root=0)
     if rank == 0:
-        print('\ndata: '.format(
+        print('\ndata: {}'.format(
             str(base64.b64encode(pickle.dumps(data)), 'ascii')))
