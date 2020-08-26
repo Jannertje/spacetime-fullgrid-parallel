@@ -4,7 +4,7 @@ import zlib
 import pickle
 import base64
 
-fn = 'slurm_cartesius.out'
+fn = 'weak_x_9_cart'
 data = open(fn, 'r').read()
 
 encoded = [block.split('\n')[0] for block in data.split('data: ')[1:]]
