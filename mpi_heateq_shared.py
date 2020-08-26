@@ -1,4 +1,6 @@
 import argparse
+import pickle
+import base64
 import os
 from shared_mem import shared_numpy_array, shared_sparse_matrix
 import sys
@@ -287,4 +289,5 @@ if __name__ == "__main__":
 
     data = MPI.COMM_WORLD.gather(data, root=0)
     if rank == 0:
-        print('\ndata = {}'.format(data))
+        print('\ndata: '.format(
+            str(base64.b64encode(pickle.dumps(data)), 'ascii')))
