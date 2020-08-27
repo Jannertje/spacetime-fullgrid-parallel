@@ -92,7 +92,7 @@ if __name__ == "__main__":
             op @ vec
 
             time_applies_iter.append(op.time_applies - t_a)
-            time_applies_iter.append(op.time_communication - t_c)
+            time_communication_iter.append(op.time_communication - t_c)
 
             # Wait for all other ops to be done as well.
             MPI.COMM_WORLD.Barrier()
