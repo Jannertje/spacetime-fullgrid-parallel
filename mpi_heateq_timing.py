@@ -82,6 +82,7 @@ if __name__ == "__main__":
                      ('WT', heat_eq_mpi.WT), ('P', heat_eq_mpi.P)]:
         time_applies_iter = []
         time_communication_iter = []
+        time_total = MPI.Wtime()
 
         for _ in range(args.iters):
             t_a = op.time_applies
@@ -101,7 +102,8 @@ if __name__ == "__main__":
             'time_communication': op.time_communication,
             'time_applies_iter': time_applies_iter,
             'time_communication_iter': time_communication_iter,
-            'num_applies': op.num_applies
+            'num_applies': op.num_applies,
+            'time_total': MPI.Wtime() - total_time
         }
 
     data['total_time'] = MPI.Wtime() - total_time
