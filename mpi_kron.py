@@ -100,6 +100,7 @@ class CompositeMPI(LinearOperatorMPI):
 
     def _matvec(self, vec_in, vec_out):
         assert (vec_in is not vec_out)
+        self.time_communication = 0
         vec_tmp = KronVectorMPI(self.dofs_distr)
         Y = vec_in
         for linop in reversed(self.linops):
