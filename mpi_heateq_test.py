@@ -207,7 +207,7 @@ def test_preconditioner():
     # Create random MPI vector.
     dofs_distr = DofDistributionMPI(MPI.COMM_WORLD, N, M)
     w_mpi = KronVectorMPI(dofs_distr)
-    w_mpi.X_loc = np.random.rand(w_mpi.X_loc.shape[0], M)
+    w_mpi.X_loc[:] = np.random.rand(w_mpi.X_loc.shape[0], M)
 
     # Perform Lanczos.
     lanczos_mpi = Lanczos(heat_eq_mpi.WT_S_W, heat_eq_mpi.P, w=w_mpi)

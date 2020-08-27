@@ -38,14 +38,14 @@ class LinearOperatorMPI:
         print('Expensive computation!')
         I = np.eye(self.N * self.M)
         comm = MPI.COMM_WORLD
-        x_mpi = KronVectorMPI(self.dofs_distr)
         result = None
         x_glob = None
-        if x_mpi.rank == 0:
+        if comm.Get_rank() == 0:
             x_glob = np.empty(self.N * self.M)
             result = np.zeros((self.N * self.M, self.N * self.M))
 
         for k in range(self.N * self.M):
+            x_mpi = KronVectorMPI(self.dofs_distr)
             x_mpi.scatter(I[k, :])
 
             # Apply the operator using MPI.
@@ -78,17 +78,14 @@ class SumMPI(LinearOperatorMPI):
         assert (vec_in is not vec_out)
         self.time_communication = 0
 
-        vec_in_cpy = vec_in.X_loc.copy()
-
         vec_out.reset()
         vec_tmp = KronVectorMPI(self.dofs_distr)
 
         for linop in self.linops:
             linop._matvec(vec_in, vec_tmp)
             vec_out += vec_tmp
-            self.time_communication += linop.time_communication
 
-        assert np.all(vec_in_cpy == vec_in.X_loc)
+            self.time_communication += linop.time_communication
 
         return vec_out
 
@@ -103,13 +100,13 @@ class CompositeMPI(LinearOperatorMPI):
 
     def _matvec(self, vec_in, vec_out):
         assert (vec_in is not vec_out)
-        self.time_communication = 0
-        vec_out.X_loc = None
+        vec_tmp = KronVectorMPI(self.dofs_distr)
         Y = vec_in
         for linop in reversed(self.linops):
             Y = linop @ Y
             self.time_communication += linop.time_communication
-        vec_out.X_loc = Y.X_loc
+
+        vec_out.X_loc[:] = Y.X_loc
         return vec_out
 
 
@@ -213,10 +210,8 @@ class TridiagKronMatMPI(LinearOperatorMPI):
         self.T_I = TridiagKronIdentityMPI(dofs_distr, mat_time)
 
     def _matvec(self, vec_in, vec_out):
-        vec_tmp = KronVectorMPI(self.dofs_distr)
-
-        self.T_I._matvec(vec_in, vec_tmp)
-        self.I_M._matvec(vec_tmp, vec_out)
+        self.T_I._matvec(vec_in, vec_out)
+        self.I_M._matvec(vec_out, vec_out)
         self.time_communication = self.I_M.time_communication + self.T_I.time_communication
         return vec_out
 

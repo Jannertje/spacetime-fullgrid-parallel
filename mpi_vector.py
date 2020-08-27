@@ -43,7 +43,7 @@ class KronVectorMPI:
     """ This class represents a vector that is parallized in the first
     component (e.g., time).
     """
-    def __init__(self, dofs_distr):
+    def __init__(self, dofs_distr, initial_data=None):
         self.dofs_distr = dofs_distr
 
         # Convenience
@@ -54,47 +54,72 @@ class KronVectorMPI:
         self.rank = dofs_distr.rank
 
         # Initialize to zero.
-        self.reset()
+        self.reset(initial_data)
 
-    def reset(self):
+    @property
+    def X_loc(self):
+        return self._X_loc
+
+    def reset(self, initial_data=None):
         self.communicated_bdr = False
         self.X_loc_bdr = None
-        self.X_loc = np.zeros((self.t_end - self.t_begin, self.M),
-                              dtype=np.float64)
+
+        if initial_data is None:
+            self._X_loc = np.zeros((self.t_end - self.t_begin, self.M),
+                                   dtype=np.float64)
+        else:
+            assert initial_data.shape == (self.t_end - self.t_begin, self.M)
+            self._X_loc = initial_data.copy()
+
+    def copy(self):
+        cpy = KronVectorMPI(self.dofs_distr, self.X_loc)
+        return cpy
+
+    def _invalidate(self):
+        """ Invalides the bdr communicated dofs. """
+        if self.communicated_bdr:
+            self.communicated_bdr = False
+            self.X_loc_bdr.setflags(write=True)
+            self.X_loc.setflags(write=True)
 
     def __iadd__(self, other):
-        self._invalidate_bdr()
-        self.X_loc += other.X_loc
+        self._invalidate()
+        self._X_loc += other.X_loc
         return self
 
     def __add__(self, other):
-        vec_out = KronVectorMPI(self.dofs_distr)
-        vec_out.X_loc = self.X_loc + other.X_loc
+        vec_out = self.copy()
+        vec_out += other
         return vec_out
 
     def __isub__(self, other):
-        self._invalidate_bdr()
-        self.X_loc -= other.X_loc
+        self._invalidate()
+        self._X_loc -= other.X_loc
         return self
 
     def __sub__(self, other):
-        vec_out = KronVectorMPI(self.dofs_distr)
-        vec_out.X_loc = self.X_loc - other.X_loc
+        vec_out = self.copy()
+        vec_out -= other
         return vec_out
 
     def __imul__(self, other):
-        self._invalidate_bdr()
-        self.X_loc *= other
+        self._invalidate()
+        self._X_loc *= other
         return self
 
     def __rmul__(self, other):
-        vec_out = KronVectorMPI(self.dofs_distr)
-        vec_out.X_loc[:] = other * self.X_loc
+        vec_out = self.copy()
+        vec_out *= other
         return vec_out
 
+    def __itruediv__(self, other):
+        self._invalidate()
+        self._X_loc /= other
+        return self
+
     def __truediv__(self, other):
-        vec_out = KronVectorMPI(self.dofs_distr)
-        vec_out.X_loc = self.X_loc / other
+        vec_out = self.copy()
+        vec_out /= other
         return vec_out
 
     def scatter(self, X_glob):
@@ -105,6 +130,7 @@ class KronVectorMPI:
                 MPI.DOUBLE
             ]
 
+        self._invalidate()
         self.dofs_distr.comm.Scatterv(data, self.X_loc)
 
     def gather(self, X_glob):
@@ -112,17 +138,12 @@ class KronVectorMPI:
             X_glob, self.dofs_distr.counts, self.dofs_distr.displs, MPI.DOUBLE
         ])
 
-    def _invalidate_bdr(self):
-        """ Invalides the bdr communicated dofs. """
-        if self.communicated_bdr:
-            self.communicated_bdr = False
-            self.X_loc_bdr.setflags(write=True)
-            self.X_loc.setflags(write=True)
-
     def communicate_bdr(self, callback=None):
-        if self.communicated_bdr: return 0.0
-
-        X_loc_cpy = self.X_loc.copy()
+        """ Communicates the bdr dofs, and calls the callback function
+            for computaitons that do not require the bdr dofs."""
+        if self.communicated_bdr:
+            callback()
+            return 0.0
 
         # Create a local vector containing an enlarged number of dofs.
         if self.X_loc_bdr is None:
@@ -148,6 +169,13 @@ class KronVectorMPI:
 
         # Copy input.
         self.X_loc_bdr[1:-1] = self.X_loc
+
+        # Make X_loc a view.
+        self._X_loc = self.X_loc_bdr[1:-1]
+        self._X_loc.setflags(write=False)
+        self.X_loc_bdr.setflags(write=False)
+
+        # Do computation that doesn't require the bdr to be present.
         if callback is not None:
             callback()
 
@@ -156,14 +184,7 @@ class KronVectorMPI:
         MPI.Request.Waitall(reqs)
         time_communication = MPI.Wtime() - start_time
 
-        # Make X_loc a view.
-        self.X_loc = self.X_loc_bdr[1:-1]
-        self.X_loc.setflags(write=False)
-        self.X_loc_bdr.setflags(write=False)
-
         self.communicated_bdr = True
-
-        assert np.all(X_loc_cpy == self.X_loc)
         return time_communication
 
     def communicate_dofs(self, comm_dofs):
