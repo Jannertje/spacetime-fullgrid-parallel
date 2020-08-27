@@ -77,14 +77,19 @@ class SumMPI(LinearOperatorMPI):
     def _matvec(self, vec_in, vec_out):
         assert (vec_in is not vec_out)
         self.time_communication = 0
-        Y_loc = np.zeros(vec_out.X_loc.shape)
+
+        vec_in_cpy = vec_in.X_loc.copy()
+
+        vec_out.reset()
+        vec_tmp = KronVectorMPI(self.dofs_distr)
 
         for linop in self.linops:
-            linop._matvec(vec_in, vec_out)
-            Y_loc += vec_out.X_loc
+            linop._matvec(vec_in, vec_tmp)
+            vec_out += vec_tmp
             self.time_communication += linop.time_communication
 
-        vec_out.X_loc = Y_loc
+        assert np.all(vec_in_cpy == vec_in.X_loc)
+
         return vec_out
 
 
@@ -177,49 +182,23 @@ class TridiagKronIdentityMPI(LinearOperatorMPI):
         self.inner_mat = sliced_mat[1:-1, :]
         self.top_row = sliced_mat[0, :]
         self.bottom_row = sliced_mat[-1, :]
-
-        # Create a local vector containing an enlarged number of dofs.
-        self.X_loc_bdr = np.zeros(
-            (dofs_distr.t_end - dofs_distr.t_begin + 2, dofs_distr.M),
-            dtype=np.float64)
-
         super().__init__(dofs_distr)
 
     def _matvec(self, vec_in, vec_out):
         assert (isinstance(vec_in, KronVectorMPI))
         assert (self.N == vec_in.N and self.M == vec_in.M)
         assert (vec_in.X_loc.shape == vec_out.X_loc.shape)
+        assert (vec_in is not vec_out)
 
         # Communicate.
-        reqs = []
-        if vec_in.rank > 0:
-            reqs.append(
-                vec_in.dofs_distr.comm.Isend(vec_in.X_loc[0, :],
-                                             vec_in.rank - 1))
-            reqs.append(
-                vec_in.dofs_distr.comm.Irecv(self.X_loc_bdr[0, :],
-                                             source=vec_in.rank - 1))
+        def callback():
+            vec_out.X_loc[1:-1] = self.inner_mat @ vec_in.X_loc_bdr
 
-        if vec_in.rank + 1 < vec_in.dofs_distr.size:
-            reqs.append(
-                vec_in.dofs_distr.comm.Isend(vec_in.X_loc[-1, :],
-                                             vec_in.rank + 1))
-            reqs.append(
-                vec_in.dofs_distr.comm.Irecv(self.X_loc_bdr[-1, :],
-                                             source=vec_in.rank + 1))
-
-        # Copy input and apply the inner matrix.
-        self.X_loc_bdr[1:-1] = vec_in.X_loc
-        vec_out.X_loc[1:-1] = self.inner_mat @ self.X_loc_bdr
-
-        # Wait for data communication to complete.
-        start_time = MPI.Wtime()
-        MPI.Request.Waitall(reqs)
-        self.time_communication += MPI.Wtime() - start_time
+        self.time_communication += vec_in.communicate_bdr(callback)
 
         # Apply top/bottom rows
-        vec_out.X_loc[0, :] = self.top_row @ self.X_loc_bdr
-        vec_out.X_loc[-1, :] = self.bottom_row @ self.X_loc_bdr
+        vec_out.X_loc[0, :] = self.top_row @ vec_in.X_loc_bdr
+        vec_out.X_loc[-1, :] = self.bottom_row @ vec_in.X_loc_bdr
         return vec_out
 
 
@@ -234,8 +213,10 @@ class TridiagKronMatMPI(LinearOperatorMPI):
         self.T_I = TridiagKronIdentityMPI(dofs_distr, mat_time)
 
     def _matvec(self, vec_in, vec_out):
-        self.I_M._matvec(vec_in, vec_out)
-        self.T_I._matvec(vec_out, vec_out)
+        vec_tmp = KronVectorMPI(self.dofs_distr)
+
+        self.T_I._matvec(vec_in, vec_tmp)
+        self.I_M._matvec(vec_tmp, vec_out)
         self.time_communication = self.I_M.time_communication + self.T_I.time_communication
         return vec_out
 
@@ -312,8 +293,7 @@ class SparseKronIdentityMPI(LinearOperatorMPI):
             assert vec_out is not vec_in
             vec_out.X_loc[:] = vec_in.X_loc
         else:
-            vec_out.X_loc = None
-            vec_out.X_loc = np.zeros(vec_in.X_loc.shape, dtype=np.float64)
+            vec_out.reset()
 
         # Wait for communication to complete.
         if len(self.comm_dofs):

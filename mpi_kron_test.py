@@ -3,8 +3,9 @@ import scipy.sparse
 
 from mpi4py import MPI
 from mpi_kron import (BlockDiagMPI, CompositeMPI, IdentityKronMatMPI,
-                      LinearOperatorMPI, MatKronIdentityMPI,
-                      SparseKronIdentityMPI, TridiagKronIdentityMPI, as_matrix)
+                      LinearOperatorMPI, MatKronIdentityMPI, SumMPI,
+                      TridiagKronIdentityMPI, SparseKronIdentityMPI,
+                      TridiagKronMatMPI, as_matrix)
 from mpi_vector import KronVectorMPI, DofDistributionMPI
 
 
@@ -32,6 +33,7 @@ def linop_test_MPI(linop_mpi, mat_glob):
     rank = MPI.COMM_WORLD.Get_rank()
     mat_mpi = linop_mpi.as_global_matrix()
     if rank == 0:
+        print(mat_mpi - mat_glob)
         assert np.allclose(mat_mpi, mat_glob)
 
 
@@ -106,3 +108,22 @@ def test_composite():
     rank = MPI.COMM_WORLD.Get_rank()
     if rank == 0:
         assert np.allclose(composite_mat, np.kron(mat_time, mat_space))
+
+
+def test_sum():
+    mat = np.array([[3.5, 13., 28.5, 50.,
+                     77.5], [-5., -23., -53., -95., -149.],
+                    [2.5, 11., 25.5, 46., 72.5]])
+    stiff_time = scipy.sparse.spdiags(mat, (1, 0, -1), 5, 5).T.copy().tocsr()
+
+    M = 3
+    mat_space_1 = np.arange(0, M * M).reshape(M, M)
+    mat_space_2 = np.arange(M * M, 2 * M * M).reshape(M, M)
+    dofs_distr = DofDistributionMPI(MPI.COMM_WORLD, stiff_time.shape[0], M)
+
+    T_M_1 = TridiagKronMatMPI(dofs_distr, stiff_time, mat_space_1)
+    T_M_2 = TridiagKronMatMPI(dofs_distr, stiff_time, mat_space_2)
+
+    T_M_sum = SumMPI(dofs_distr, [T_M_1, T_M_2])
+    linop_test_MPI(T_M_sum,
+                   np.kron(stiff_time.toarray(), mat_space_1 + mat_space_2))

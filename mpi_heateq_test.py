@@ -97,8 +97,9 @@ def test_S_apply():
     y_mpi = heat_eq_mpi.S @ x_mpi
     y_mpi.gather(x_glob)
     if rank == 0:
-        assert (np.allclose(x_glob, y_glob))
+        print(x_glob - z_glob)
         assert (np.allclose(x_glob, z_glob))
+        assert (np.allclose(x_glob, y_glob))
 
 
 def test_solve():
