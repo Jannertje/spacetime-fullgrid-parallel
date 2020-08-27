@@ -234,8 +234,8 @@ class TridiagKronMatMPI(LinearOperatorMPI):
         self.T_I = TridiagKronIdentityMPI(dofs_distr, mat_time)
 
     def _matvec(self, vec_in, vec_out):
-        self.I_M._matvec(vec_in, vec_out)
-        self.T_I._matvec(vec_out, vec_out)
+        self.T_I._matvec(vec_in, vec_out)
+        self.I_M._matvec(vec_out, vec_out)
         self.time_communication = self.I_M.time_communication + self.T_I.time_communication
         return vec_out
 
