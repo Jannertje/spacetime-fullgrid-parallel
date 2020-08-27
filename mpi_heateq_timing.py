@@ -1,10 +1,13 @@
 import argparse
+from mpi4py import MPI
+from mpi_vector import KronVectorMPI
 import zlib
 import os
 import pickle
 import base64
 
-from mpi_heateq_shared import HeatEquationMPIShared
+from mpi_heateq_shared import HeatEquationMPIShared, mem
+import numpy as np
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -77,9 +80,18 @@ if __name__ == "__main__":
     vec.X_loc = np.random.rand(*vec.X_loc.shape)
     for name, op in [('W', heat_eq_mpi.W), ('S', heat_eq_mpi.S),
                      ('WT', heat_eq_mpi.WT), ('P', heat_eq_mpi.P)]:
-        for _ in args.iters:
+        time_applies_iter = []
+        time_communication_iter = []
+
+        for _ in range(args.iters):
+            t_a = op.time_applies
+            t_c = op.time_communication
+
             # Apply the operator.
             op @ vec
+
+            time_applies_iter.append(op.time_applies - t_a)
+            time_applies_iter.append(op.time_communication - t_c)
 
             # Wait for all other ops to be done as well.
             MPI.COMM_WORLD.Barrier()
@@ -87,6 +99,8 @@ if __name__ == "__main__":
         data[name] = {
             'time_applies': op.time_applies,
             'time_communication': op.time_communication,
+            'time_applies_iter': time_applies_iter,
+            'time_communication_iter': time_communication_iter,
             'num_applies': op.num_applies
         }
 
@@ -96,8 +110,8 @@ if __name__ == "__main__":
     MPI.COMM_WORLD.Barrier()
     if rank == 0:
         print('')
-        print('Completed in {} PCG steps.'.format(iters))
-        print('Total solve time: {}s.'.format(MPI.Wtime() - solve_time))
+        print('Completed {} iters steps.'.format(args.iters))
+        print('Total time: {}s.'.format(data['total_time']))
         heat_eq_mpi.print_time_per_apply()
         print('Memory after solve: {}mb.'.format(mem()))
 

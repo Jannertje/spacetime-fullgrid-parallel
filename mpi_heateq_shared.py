@@ -186,7 +186,7 @@ class HeatEquationMPIShared:
         print('WT: {:.5f}\t{:.5f}'.format(*self.WT.time_per_apply()))
         print('P:  {:.5f}\t{:.5f}'.format(*self.P.time_per_apply()))
         print('')
-        print('WTSW: {:.5f}\t{:.5f}'.format(*self.WT_S_W.time_per_apply()))
+        #print('WTSW: {:.5f}\t{:.5f}'.format(*self.WT_S_W.time_per_apply()))
 
 
 if __name__ == "__main__":
