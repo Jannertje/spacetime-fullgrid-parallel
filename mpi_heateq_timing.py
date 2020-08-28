@@ -74,7 +74,7 @@ if __name__ == "__main__":
     data['mem_after_construction'] = mem()
 
     MPI.COMM_WORLD.Barrier()
-    time_total_op = MPI.Wtime()
+    time_total = MPI.Wtime()
 
     # Time the four operors separately.
     vec = KronVectorMPI(heat_eq_mpi.dofs_distr)
