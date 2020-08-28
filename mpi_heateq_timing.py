@@ -78,7 +78,8 @@ if __name__ == "__main__":
 
     # Time the four operors separately.
     vec = KronVectorMPI(heat_eq_mpi.dofs_distr)
-    vec.X_loc = np.random.rand(*vec.X_loc.shape)
+    np.random.seed(128)
+    vec.X_loc[:] = np.random.rand(*vec.X_loc.shape)
     for name, op in [('W', heat_eq_mpi.W), ('S', heat_eq_mpi.S),
                      ('WT', heat_eq_mpi.WT), ('P', heat_eq_mpi.P)]:
         time_applies_iter = []
