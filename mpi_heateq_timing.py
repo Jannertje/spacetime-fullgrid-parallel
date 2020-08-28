@@ -91,6 +91,7 @@ if __name__ == "__main__":
             t_c = op.time_communication
 
             # Apply the operator.
+            vec._invalidate()
             op @ vec
 
             time_applies_iter.append(op.time_applies - t_a)
