@@ -227,7 +227,6 @@ if __name__ == "__main__":
         print('Too many MPI processors!')
         sys.exit('1')
 
-    MPI.COMM_WORLD.Barrier()
     heat_eq_mpi = HeatEquationMPI(J_space=J_space,
                                   J_time=J_time,
                                   precond=precond,
@@ -257,6 +256,7 @@ if __name__ == "__main__":
         if rank == 0:
             print('.', end='', flush=True)
 
+    MPI.COMM_WORLD.Barrier()
     solve_time = MPI.Wtime()
     u_mpi_P, iters = PCG(heat_eq_mpi.WT_S_W,
                          heat_eq_mpi.P,

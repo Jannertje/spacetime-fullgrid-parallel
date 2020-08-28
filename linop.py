@@ -61,15 +61,17 @@ def BlockLinOp(linops):
     return LinearOperator(matvec=matvec, shape=(height, width))
 
 
-def CompositeLinOp(linops):
-    def matvec(x):
-        y = x
-        for linop in reversed(linops):
-            y = linop.dot(y)
-        return y
+class CompositeLinOp(sp.linalg.LinearOperator):
+    def __init__(self, linops):
+        super().__init__(dtype=np.float64,
+                         shape=(linops[0].shape[0], linops[-1].shape[1]))
+        self.linops = linops
 
-    return LinearOperator(matvec=matvec,
-                          shape=(linops[0].shape[0], linops[-1].shape[1]))
+    def _matmat(self, X):
+        Y = X
+        for linop in reversed(self.linops):
+            Y = linop @ Y
+        return Y
 
 
 def AsLinearOperator(ngmat, freedofs):

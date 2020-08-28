@@ -236,6 +236,7 @@ if __name__ == "__main__":
                                         vcycles=args.vcycles,
                                         alpha=args.alpha,
                                         wavelettransform=args.wavelettransform)
+
     if rank == 0:
         data['args'] = vars(args)
         data['N'] = heat_eq_mpi.N
@@ -261,11 +262,15 @@ if __name__ == "__main__":
         if rank == 0:
             print('.', end='', flush=True)
 
+    # Place a barrier so that everyone starts solving at the same time.
+    MPI.COMM_WORLD.Barrier()
     solve_time = MPI.Wtime()
+
     u_mpi_P, iters = PCG(heat_eq_mpi.WT_S_W,
                          heat_eq_mpi.P,
                          heat_eq_mpi.rhs,
                          callback=cb)
+    MPI.COMM_WORLD.Barrier()
 
     data['solve_time'] = MPI.Wtime() - solve_time
     data['mem_after_solve'] = mem()
@@ -279,7 +284,6 @@ if __name__ == "__main__":
             'num_applies': op.num_applies
         }
 
-    MPI.COMM_WORLD.Barrier()
     if rank == 0:
         print('')
         print('Completed in {} PCG steps.'.format(iters))

@@ -73,6 +73,7 @@ if __name__ == "__main__":
 
     data['mem_after_construction'] = mem()
 
+    MPI.COMM_WORLD.Barrier()
     total_time = MPI.Wtime()
 
     # Time the four operors separately.
@@ -106,6 +107,7 @@ if __name__ == "__main__":
             'time_total': MPI.Wtime() - total_time
         }
 
+    MPI.COMM_WORLD.Barrier()
     data['total_time'] = MPI.Wtime() - total_time
     data['mem_after_timing'] = mem()
 
