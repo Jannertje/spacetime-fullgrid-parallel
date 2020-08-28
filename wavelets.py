@@ -131,11 +131,11 @@ class LevelWaveletTransformOp(WaveletTransformOp):
     def _split(J, j, p, q):
         if j == 0: return sp.csr_matrix((2**J + 1, 2**J + 1))
         I = sp.eye(2**J + 1, format='csr')
-        mat = sp.eye(2**J + 1, format='lil')
+        mat = sp.eye(2**J + 1, format='dok')
         S = 2**(J - j)
         mat[::S] = p @ I[::S][::2] + q @ I[::S][1::2]
         mat -= sp.eye(2**J + 1)
-        return sp.csr_matrix(mat)
+        return mat.tocsr()
 
     def _matmat(self, x):
         y = x.copy()
