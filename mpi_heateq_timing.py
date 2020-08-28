@@ -74,7 +74,7 @@ if __name__ == "__main__":
     data['mem_after_construction'] = mem()
 
     MPI.COMM_WORLD.Barrier()
-    total_time = MPI.Wtime()
+    time_total_op = MPI.Wtime()
 
     # Time the four operors separately.
     vec = KronVectorMPI(heat_eq_mpi.dofs_distr)
@@ -83,7 +83,7 @@ if __name__ == "__main__":
                      ('WT', heat_eq_mpi.WT), ('P', heat_eq_mpi.P)]:
         time_applies_iter = []
         time_communication_iter = []
-        time_total = MPI.Wtime()
+        time_total_op = MPI.Wtime()
 
         for _ in range(args.iters):
             t_a = op.time_applies
@@ -104,18 +104,18 @@ if __name__ == "__main__":
             'time_applies_iter': time_applies_iter,
             'time_communication_iter': time_communication_iter,
             'num_applies': op.num_applies,
-            'time_total': MPI.Wtime() - total_time
+            'time_total': MPI.Wtime() - time_total_op
         }
 
     MPI.COMM_WORLD.Barrier()
-    data['total_time'] = MPI.Wtime() - total_time
+    data['time_total'] = MPI.Wtime() - time_total
     data['mem_after_timing'] = mem()
 
     MPI.COMM_WORLD.Barrier()
     if rank == 0:
         print('')
         print('Completed {} iters steps.'.format(args.iters))
-        print('Total time: {}s.'.format(data['total_time']))
+        print('Total time: {}s.'.format(data['time_total']))
         heat_eq_mpi.print_time_per_apply()
         print('Memory after solve: {}mb.'.format(mem()))
 

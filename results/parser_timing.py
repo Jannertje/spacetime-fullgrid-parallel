@@ -6,18 +6,20 @@ import zlib
 import pickle
 import base64
 
-fn = 'weak_timing'
+fn = 'weak_timing_2'
 data = open(fn, 'r').read()
 
 encoded = [block.split('\n')[0] for block in data.split('data: ')[1:]]
-for run in encoded[-1:]:
+for run in encoded[0:1]:
     data = pickle.loads(zlib.decompress(base64.b64decode(run)))
     iters = data[0]['args']['iters']
     procs = data[0]['size']
 
+    print('total_time: {}'.format(data[0]['total_time']))
     for op in ['P', 'S', 'W', 'WT']:
         times_op_iter = [[] for _ in range(iters)]
         times_comm_iter = [[] for _ in range(iters)]
+        print('total_time {}: {}'.format(op, data[0][op]['time_total']))
         for d in data:
             if not d[op]['time_communication_iter']:
                 d[op]['time_communication_iter'] = d[op]['time_applies_iter'][
