@@ -6,7 +6,7 @@ import zlib
 import pickle
 import base64
 
-fn = 'weak_timing_3'
+fn = 'weak_timing_lisa'
 data = open(fn, 'r').read()
 
 encoded = [block.split('\n')[0] for block in data.split('data: ')[1:]]
