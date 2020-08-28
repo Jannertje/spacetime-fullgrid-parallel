@@ -43,7 +43,7 @@ class KronVectorMPI:
     """ This class represents a vector that is parallized in the first
     component (e.g., time).
     """
-    def __init__(self, dofs_distr):
+    def __init__(self, dofs_distr, initial_data=None):
         self.dofs_distr = dofs_distr
 
         # Convenience
@@ -53,40 +53,73 @@ class KronVectorMPI:
         self.M = dofs_distr.M
         self.rank = dofs_distr.rank
 
-        # Create a local vector containing the dofs.
-        self.X_loc = np.zeros((self.t_end - self.t_begin, self.M),
-                              dtype=np.float64)
+        # Initialize to zero.
+        self.reset(initial_data)
+
+    @property
+    def X_loc(self):
+        return self._X_loc
+
+    def reset(self, initial_data=None):
+        self.communicated_bdr = False
+        self.X_loc_bdr = None
+
+        if initial_data is None:
+            self._X_loc = np.zeros((self.t_end - self.t_begin, self.M),
+                                   dtype=np.float64)
+        else:
+            assert initial_data.shape == (self.t_end - self.t_begin, self.M)
+            self._X_loc = initial_data.copy()
+
+    def copy(self):
+        cpy = KronVectorMPI(self.dofs_distr, self.X_loc)
+        return cpy
+
+    def _invalidate(self):
+        """ Invalides the bdr communicated dofs. """
+        if self.communicated_bdr:
+            self.communicated_bdr = False
+            self.X_loc_bdr.setflags(write=True)
+            self.X_loc.setflags(write=True)
 
     def __iadd__(self, other):
-        self.X_loc += other.X_loc
+        self._invalidate()
+        self._X_loc += other.X_loc
         return self
 
     def __add__(self, other):
-        vec_out = KronVectorMPI(self.dofs_distr)
-        vec_out.X_loc = self.X_loc + other.X_loc
+        vec_out = self.copy()
+        vec_out += other
         return vec_out
 
     def __isub__(self, other):
-        self.X_loc -= other.X_loc
+        self._invalidate()
+        self._X_loc -= other.X_loc
         return self
 
     def __sub__(self, other):
-        vec_out = KronVectorMPI(self.dofs_distr)
-        vec_out.X_loc = self.X_loc - other.X_loc
+        vec_out = self.copy()
+        vec_out -= other
         return vec_out
 
     def __imul__(self, other):
-        self.X_loc *= other
+        self._invalidate()
+        self._X_loc *= other
         return self
 
     def __rmul__(self, other):
-        vec_out = KronVectorMPI(self.dofs_distr)
-        vec_out.X_loc[:] = other * self.X_loc
+        vec_out = self.copy()
+        vec_out *= other
         return vec_out
 
+    def __itruediv__(self, other):
+        self._invalidate()
+        self._X_loc /= other
+        return self
+
     def __truediv__(self, other):
-        vec_out = KronVectorMPI(self.dofs_distr)
-        vec_out.X_loc = self.X_loc / other
+        vec_out = self.copy()
+        vec_out /= other
         return vec_out
 
     def scatter(self, X_glob):
@@ -97,6 +130,7 @@ class KronVectorMPI:
                 MPI.DOUBLE
             ]
 
+        self._invalidate()
         self.dofs_distr.comm.Scatterv(data, self.X_loc)
 
     def gather(self, X_glob):
@@ -104,26 +138,54 @@ class KronVectorMPI:
             X_glob, self.dofs_distr.counts, self.dofs_distr.displs, MPI.DOUBLE
         ])
 
-    def communicate_bdr(self):
-        start_time = MPI.Wtime()
+    def communicate_bdr(self, callback=None):
+        """ Communicates the bdr dofs, and calls the callback function
+            for computaitons that do not require the bdr dofs."""
+        if self.communicated_bdr:
+            callback()
+            return 0.0
+
+        # Create a local vector containing an enlarged number of dofs.
+        if self.X_loc_bdr is None:
+            self.X_loc_bdr = np.zeros(
+                (self.dofs_distr.t_end - self.dofs_distr.t_begin + 2, self.M),
+                dtype=np.float64)
+
+        # Communicate.
         reqs = []
         if self.rank > 0:
             reqs.append(
                 self.dofs_distr.comm.Isend(self.X_loc[0, :], self.rank - 1))
+            reqs.append(
+                self.dofs_distr.comm.Irecv(self.X_loc_bdr[0, :],
+                                           source=self.rank - 1))
+
         if self.rank + 1 < self.dofs_distr.size:
             reqs.append(
                 self.dofs_distr.comm.Isend(self.X_loc[-1, :], self.rank + 1))
-
-        bdr = (np.zeros(self.M), np.zeros(self.M))
-        if self.rank > 0:
             reqs.append(
-                self.dofs_distr.comm.Irecv(bdr[0], source=self.rank - 1))
-        if self.rank + 1 < self.dofs_distr.size:
-            reqs.append(
-                self.dofs_distr.comm.Irecv(bdr[1], source=self.rank + 1))
+                self.dofs_distr.comm.Irecv(self.X_loc_bdr[-1, :],
+                                           source=self.rank + 1))
 
+        # Copy input.
+        self.X_loc_bdr[1:-1] = self.X_loc
+
+        # Make X_loc a view.
+        self._X_loc = self.X_loc_bdr[1:-1]
+        self._X_loc.setflags(write=False)
+        self.X_loc_bdr.setflags(write=False)
+
+        # Do computation that doesn't require the bdr to be present.
+        if callback is not None:
+            callback()
+
+        # Wait for data communication to complete.
+        start_time = MPI.Wtime()
         MPI.Request.Waitall(reqs)
-        return bdr, MPI.Wtime() - start_time
+        time_communication = MPI.Wtime() - start_time
+
+        self.communicated_bdr = True
+        return time_communication
 
     def communicate_dofs(self, comm_dofs):
         X_recv = {recv: np.zeros(self.M) for (send, recv) in comm_dofs}

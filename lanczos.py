@@ -102,8 +102,8 @@ class Lanczos:
 
         v = A @ w  # v=Aw
         norm = sqrt(v.dot(w))
-        v = v / norm
-        w = w / norm
+        v /= norm
+        w /= norm
 
         v = P @ v
 
