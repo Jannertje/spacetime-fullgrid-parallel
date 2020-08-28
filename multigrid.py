@@ -97,13 +97,11 @@ class Smoother:
         for i, row in enumerate(self.mat_rows):
             ax = row @ u
             u[i] += self.invdiag[i] * (f[i] - ax)
-        return u
 
     def PostSmooth(self, u, f):
         for i, row in reversed(list(enumerate(self.mat_rows))):
             ax = row @ u
             u[i] += self.invdiag[i] * (f[i] - ax)
-        return u
 
 
 class PETScSMoother:
@@ -114,24 +112,25 @@ class PETScSMoother:
                                                               mat.indices,
                                                               mat.data),
                                                          comm=PETSc.COMM_SELF)
+        self.f = np.empty(mat.shape[1])
+        self.f_petsc = PETSc.Vec().createWithArray(self.f,
+                                                   comm=PETSc.COMM_SELF)
 
     def PreSmooth(self, u, f):
-        f_petsc = PETSc.Vec().createWithArray(f, comm=PETSc.COMM_SELF)
+        self.f_petsc.setArray(f)
         u_petsc = PETSc.Vec().createWithArray(u, comm=PETSc.COMM_SELF)
-        self.mat_petsc.SOR(f_petsc,
+        self.mat_petsc.SOR(self.f_petsc,
                            u_petsc,
                            its=self.its,
                            sortype=self.mat_petsc.SORType.FORWARD_SWEEP)
-        return u
 
     def PostSmooth(self, u, f):
-        f_petsc = PETSc.Vec().createWithArray(f, comm=PETSc.COMM_SELF)
+        self.f_petsc.setArray(f)
         u_petsc = PETSc.Vec().createWithArray(u, comm=PETSc.COMM_SELF)
-        self.mat_petsc.SOR(f_petsc,
+        self.mat_petsc.SOR(self.f_petsc,
                            u_petsc,
                            its=self.its,
                            sortype=self.mat_petsc.SORType.BACKWARD_SWEEP)
-        return u
 
 
 class MultiGrid(LinearOperator):
@@ -173,17 +172,19 @@ class MultiGrid(LinearOperator):
 
     def MGM(self, j, u_j, f_j):
         if j == 0:
-            u_j = self.coarse_solver.solve(f_j)
+            u_j[:] = self.coarse_solver.solve(f_j)
         else:
             self.smoothers[j].PreSmooth(u_j, f_j)
 
             d_cj = self.hierarchy.R_mats[j - 1] @ (self.mats[j] @ u_j - f_j)
-            u_cj = self.MGM(j - 1, np.zeros(self.mats[j - 1].shape[0]), d_cj)
+
+            # Recurse.
+            u_cj = np.zeros(self.mats[j - 1].shape[0])
+            self.MGM(j - 1, u_cj, d_cj)
+
             u_j -= self.hierarchy.P_mats[j - 1] @ u_cj
 
             self.smoothers[j].PostSmooth(u_j, f_j)
-
-        return u_j
 
     def _matvec(self, b):
         start_time = MPI.Wtime()
