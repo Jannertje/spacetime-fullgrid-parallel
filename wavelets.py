@@ -81,8 +81,10 @@ class WaveletTransformOp(sp.linalg.LinearOperator):
         mat[:, 1::2] = sp.eye(2**(j - 1))
         mat[0, 0] = -1
         mat[-1, -1] = -1
-        mat *= 2**(j / 2)
-        return mat.T.tocsr()
+
+        result = mat.T.tocsr()
+        result *= 2**(j / 2)
+        return result
 
     def _matmat(self, x):
         y = x.copy()
