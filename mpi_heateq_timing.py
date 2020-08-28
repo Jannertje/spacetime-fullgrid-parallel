@@ -74,11 +74,12 @@ if __name__ == "__main__":
     data['mem_after_construction'] = mem()
 
     MPI.COMM_WORLD.Barrier()
-    time_total_op = MPI.Wtime()
+    time_total = MPI.Wtime()
 
     # Time the four operors separately.
     vec = KronVectorMPI(heat_eq_mpi.dofs_distr)
-    vec.X_loc = np.random.rand(*vec.X_loc.shape)
+    np.random.seed(128)
+    vec.X_loc[:] = np.random.rand(*vec.X_loc.shape)
     for name, op in [('W', heat_eq_mpi.W), ('S', heat_eq_mpi.S),
                      ('WT', heat_eq_mpi.WT), ('P', heat_eq_mpi.P)]:
         time_applies_iter = []
@@ -90,6 +91,7 @@ if __name__ == "__main__":
             t_c = op.time_communication
 
             # Apply the operator.
+            vec._invalidate()
             op @ vec
 
             time_applies_iter.append(op.time_applies - t_a)

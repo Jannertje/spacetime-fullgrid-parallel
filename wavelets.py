@@ -81,8 +81,10 @@ class WaveletTransformOp(sp.linalg.LinearOperator):
         mat[:, 1::2] = sp.eye(2**(j - 1))
         mat[0, 0] = -1
         mat[-1, -1] = -1
-        mat *= 2**(j / 2)
-        return mat.T.tocsr()
+
+        result = mat.T.tocsr()
+        result *= 2**(j / 2)
+        return result
 
     def _matmat(self, x):
         y = x.copy()
@@ -129,11 +131,11 @@ class LevelWaveletTransformOp(WaveletTransformOp):
     def _split(J, j, p, q):
         if j == 0: return sp.csr_matrix((2**J + 1, 2**J + 1))
         I = sp.eye(2**J + 1, format='csr')
-        mat = sp.eye(2**J + 1, format='lil')
+        mat = sp.eye(2**J + 1, format='dok')
         S = 2**(J - j)
         mat[::S] = p @ I[::S][::2] + q @ I[::S][1::2]
         mat -= sp.eye(2**J + 1)
-        return sp.csr_matrix(mat)
+        return mat.tocsr()
 
     def _matmat(self, x):
         y = x.copy()

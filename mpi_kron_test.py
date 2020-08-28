@@ -14,10 +14,10 @@ def linearity_test_MPI(linop):
     alpha = 3.14
     dofs_distr = DofDistributionMPI(MPI.COMM_WORLD, linop.N, linop.M)
     x_mpi = KronVectorMPI(dofs_distr)
-    x_mpi.X_loc = np.random.rand(*x_mpi.X_loc.shape)
+    x_mpi.X_loc[:] = np.random.rand(*x_mpi.X_loc.shape)
 
     y_mpi = KronVectorMPI(dofs_distr)
-    y_mpi.X_loc = np.random.rand(*y_mpi.X_loc.shape)
+    y_mpi.X_loc[:] = np.random.rand(*y_mpi.X_loc.shape)
 
     z_mpi = x_mpi + alpha * y_mpi
 
