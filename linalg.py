@@ -3,7 +3,7 @@ import numpy as np
 from mpi_vector import KronVectorMPI
 
 
-def PCG(T, P, b, w0=None, kmax=100000, rtol=1e-5, callback=None):
+def PCG(T, P, b, w0=None, kmax=100000, eps=1e-5, callback=None):
     def inner(x, y):
         return x.dot(y)
 
@@ -19,13 +19,11 @@ def PCG(T, P, b, w0=None, kmax=100000, rtol=1e-5, callback=None):
     sq_rhs_norm = inner(b, b)
     if sq_rhs_norm == 0: return w, iters
 
-    threshold = rtol * rtol * sq_rhs_norm
-
     r = b - T @ w
-    if inner(r, r) < threshold: return w, iters
 
     p = P @ r
     abs_r = inner(r, p)
+    if abs_r < eps * eps: return w, iters
     for k in range(1, kmax):
         iters += 1
         t = T @ p
@@ -35,10 +33,10 @@ def PCG(T, P, b, w0=None, kmax=100000, rtol=1e-5, callback=None):
         del t
         if callback is not None:
             callback(w, r, k)
-        if inner(r, r) < threshold: break
         z = P @ r
         abs_r_old = abs_r
         abs_r = inner(r, z)
+        if abs_r < eps * eps: break
         beta = abs_r / abs_r_old
         p *= beta
         p += z
