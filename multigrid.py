@@ -8,10 +8,8 @@ from petsc4py import PETSc
 import scipy.sparse
 from scipy.sparse import csr_matrix
 
-from bilform import BilForm
 from lanczos import Lanczos
 from linop import AsLinearOperator
-from mesh import construct_2d_square_mesh
 from mpi_kron import as_matrix
 
 
@@ -208,6 +206,7 @@ if __name__ == "__main__":
         from ngsolve import (H1, BaseMatrix, BilinearForm, InnerProduct,
                              Preconditioner, TaskManager, ds, dx, grad,
                              ngsglobals)
+        from mesh import construct_2d_square_mesh
         mesh, bc = construct_2d_square_mesh(9)
         fes = H1(mesh, order=1, dirichlet=bc)
         A_bf = BilForm(
