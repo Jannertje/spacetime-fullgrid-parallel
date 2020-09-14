@@ -26,6 +26,9 @@ def mem():
     process = psutil.Process(os.getpid())
     return process.memory_info().rss / 1048576
 
+def fprint(s):
+    print(s, flush=True)
+
 
 class HeatEquationMPIShared:
     def __init__(self,
@@ -133,6 +136,7 @@ class HeatEquationMPIShared:
             self.WT = TransposedWaveletTransformKronIdentityMPI(
                 self.dofs_distr, self.J_time)
 
+
         # ---- Preconditioners in space ----
         hierarchy = MeshHierarchy(fes_x, shared_comm)
         self.Kinv_x = MultiGrid(self.A_x,
@@ -180,13 +184,13 @@ class HeatEquationMPIShared:
         self.setup_time = MPI.Wtime() - start_time
         self.mem_after_mpi = mem()
 
-    def print_time_per_apply(self):
-        print('W:  {:.5f}\t{:.5f}'.format(*self.W.time_per_apply()))
-        print('S:  {:.5f}\t{:.5f}'.format(*self.S.time_per_apply()))
-        print('WT: {:.5f}\t{:.5f}'.format(*self.WT.time_per_apply()))
-        print('P:  {:.5f}\t{:.5f}'.format(*self.P.time_per_apply()))
-        print('')
-        #print('WTSW: {:.5f}\t{:.5f}'.format(*self.WT_S_W.time_per_apply()))
+    def fprint_time_per_apply(self):
+        fprint('W:  {:.5f}\t{:.5f}'.format(*self.W.time_per_apply()))
+        fprint('S:  {:.5f}\t{:.5f}'.format(*self.S.time_per_apply()))
+        fprint('WT: {:.5f}\t{:.5f}'.format(*self.WT.time_per_apply()))
+        fprint('P:  {:.5f}\t{:.5f}'.format(*self.P.time_per_apply()))
+        fprint('')
+        #fprint('WTSW: {:.5f}\t{:.5f}'.format(*self.WT_S_W.time_per_apply()))
 
 
 if __name__ == "__main__":
@@ -226,8 +230,14 @@ if __name__ == "__main__":
     size = MPI.COMM_WORLD.Get_size()
     data = {'rank': rank, 'size': size}
     if size > 2**J_time + 1:
-        print('Too many MPI processors!')
+        fprint('Too many MPI processors!')
         sys.exit('1')
+
+    if rank == 0:
+        fprint('\n\nCreating mesh with {} time refines and {} space refines.'.
+              format(J_time, J_space))
+        fprint('MPI tasks: {} '.format( size))
+        fprint('Arguments: {}'.format( args))
 
     heat_eq_mpi = HeatEquationMPIShared(J_space=J_space,
                                         J_time=J_time,
@@ -241,20 +251,16 @@ if __name__ == "__main__":
         data['args'] = vars(args)
         data['N'] = heat_eq_mpi.N
         data['M'] = heat_eq_mpi.M
-        print('\n\nCreating mesh with {} time refines and {} space refines.'.
-              format(J_time, J_space))
-        print('MPI tasks: ', size)
-        print('Arguments:', args)
-        print('N = {}. M = {}.'.format(heat_eq_mpi.N, heat_eq_mpi.M))
-        print('Constructed bilinear forms in {} s.'.format(
+        fprint('N = {}. M = {}.'.format(heat_eq_mpi.N, heat_eq_mpi.M))
+        fprint('Constructed bilinear forms in {} s.'.format(
             heat_eq_mpi.setup_time))
-        print('Memory after ngsolve: {}mb.'.format(
+        fprint('Memory after ngsolve: {}mb.'.format(
             heat_eq_mpi.mem_after_ngsolve))
-        print('Memory after shared mat: {}mb.'.format(
+        fprint('Memory after shared mat: {}mb.'.format(
             heat_eq_mpi.mem_after_shared_matrices))
-        print('Memory after precond: {}mb.'.format(
+        fprint('Memory after precond: {}mb.'.format(
             heat_eq_mpi.mem_after_precond))
-        print('Memory after construction: {}mb.'.format(mem()))
+        fprint('Memory after construction: {}mb.'.format(mem()))
     data['mem_after_construction'] = mem()
 
     # Solve.
@@ -285,13 +291,13 @@ if __name__ == "__main__":
         }
 
     if rank == 0:
-        print('')
-        print('Completed in {} PCG steps.'.format(iters))
-        print('Total solve time: {}s.'.format(MPI.Wtime() - solve_time))
-        heat_eq_mpi.print_time_per_apply()
-        print('Memory after solve: {}mb.'.format(mem()))
+        fprint('')
+        fprint('Completed in {} PCG steps.'.format(iters))
+        fprint('Total solve time: {}s.'.format(MPI.Wtime() - solve_time))
+        heat_eq_mpi.fprint_time_per_apply()
+        fprint('Memory after solve: {}mb.'.format(mem()))
 
     data = MPI.COMM_WORLD.gather(data, root=0)
     if rank == 0:
-        print('\ndata: {}'.format(
+        fprint('\ndata: {}'.format(
             str(base64.b64encode(zlib.compress(pickle.dumps(data))), 'ascii')))
