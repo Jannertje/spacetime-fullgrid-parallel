@@ -236,6 +236,7 @@ if __name__ == "__main__":
                                         vcycles=args.vcycles,
                                         alpha=args.alpha,
                                         wavelettransform=args.wavelettransform)
+    sys.exit()
 
     if rank == 0:
         data['args'] = vars(args)
