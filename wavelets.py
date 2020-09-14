@@ -1,6 +1,4 @@
 import numpy as np
-import math
-import matplotlib.pyplot as plt
 from mpi_vector import KronVectorMPI
 from mpi4py import MPI
 import scipy.sparse as sp
