@@ -10,7 +10,7 @@ from mpi_kron import CompositeMPI, SparseKronIdentityMPI, as_matrix
 
 def WaveletTransformMat(J):
     def p(j):
-        mat = sp.lil_matrix((2**(j - 1) + 1, 2**j + 1))
+        mat = sp.dok_matrix((2**(j - 1) + 1, 2**j + 1))
         mat[:, 0::2] = sp.eye(2**(j - 1) + 1)
         mat[:, 1::2] = sp.diags([0.5, 0.5], [0, -1],
                                 shape=(2**(j - 1) + 1, 2**(j - 1)))
@@ -18,7 +18,7 @@ def WaveletTransformMat(J):
 
     def q(j):
         if j == 0: return sp.eye(2)
-        mat = sp.lil_matrix((2**(j - 1), 2**j + 1))
+        mat = sp.dok_matrix((2**(j - 1), 2**j + 1))
         mat[:, 0::2] = sp.diags([-0.5, -0.5], [0, 1],
                                 shape=(2**(j - 1), 2**(j - 1) + 1))
         mat[:, 1::2] = sp.eye(2**(j - 1))
@@ -67,18 +67,23 @@ class WaveletTransformOp(sp.linalg.LinearOperator):
             ]
 
     def _p(j):
-        mat = sp.lil_matrix((2**(j - 1) + 1, 2**j + 1))
-        mat[:, 0::2] = sp.eye(2**(j - 1) + 1)
-        mat[:, 1::2] = sp.diags([0.5, 0.5], [0, -1],
-                                shape=(2**(j - 1) + 1, 2**(j - 1)))
+        mat = sp.dok_matrix((2**(j - 1) + 1, 2**j + 1))
+        for i in range(mat.shape[0]):
+            mat[i, i * 2] = 1
+            if i > 0:
+                mat[i, i * 2 - 1] = 0.5
+            if i + 1 < mat.shape[0]:
+                mat[i, i * 2 + 1] = 0.5
+
         return mat.T.tocsr()
 
     def _q(j):
         if j == 0: return sp.eye(2)
-        mat = sp.lil_matrix((2**(j - 1), 2**j + 1))
-        mat[:, 0::2] = sp.diags([-0.5, -0.5], [0, 1],
-                                shape=(2**(j - 1), 2**(j - 1) + 1))
-        mat[:, 1::2] = sp.eye(2**(j - 1))
+        mat = sp.dok_matrix((2**(j - 1), 2**j + 1))
+        for i in range(mat.shape[0]):
+            mat[i, i * 2] = -0.5
+            mat[i, i * 2 + 1] = 1
+            mat[i, i * 2 + 2] = -0.5
         mat[0, 0] = -1
         mat[-1, -1] = -1
 
@@ -130,12 +135,25 @@ class LevelWaveletTransformOp(WaveletTransformOp):
 
     def _split(J, j, p, q):
         if j == 0: return sp.csr_matrix((2**J + 1, 2**J + 1))
-        I = sp.eye(2**J + 1, format='csr')
-        mat = sp.eye(2**J + 1, format='dok')
+
+        rows, cols, vals = [], [], []
         S = 2**(J - j)
-        mat[::S] = p @ I[::S][::2] + q @ I[::S][1::2]
-        mat -= sp.eye(2**J + 1)
-        return mat.tocsr()
+        p_coo = p.tocoo()
+        q_coo = q.tocoo()
+        for r, c, v in zip(p_coo.row, p_coo.col, p_coo.data):
+            rows.append(S * r)
+            cols.append(2 * S * c)
+            vals.append(v)
+        for r, c, v in zip(q_coo.row, q_coo.col, q_coo.data):
+            rows.append(S * r)
+            cols.append(S + 2 * S * c)
+            vals.append(v)
+        for i in range(0, 2**J + 1, S):
+            rows.append(i)
+            cols.append(i)
+            vals.append(-1)
+
+        return sp.csr_matrix((vals, (rows, cols)), shape=(2**J + 1, 2**J + 1))
 
     def _matmat(self, x):
         y = x.copy()

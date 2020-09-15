@@ -40,4 +40,5 @@ def PCG(T, P, b, w0=None, kmax=100000, eps=1e-6, callback=None):
         beta = abs_r / abs_r_old
         p *= beta
         p += z
+        del z
     return w, iters
