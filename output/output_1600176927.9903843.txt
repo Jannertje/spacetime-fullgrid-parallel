@@ -1,0 +1,576 @@
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+
+
+Creating mesh with 10 time refines and 4 space refines.
+MPI tasks:  48
+Arguments: Namespace(J_space=4, J_time=10, alpha=0.3, kappa2=True, precond='mg', problem='square', smoothsteps=1, solve=False, vcycles=1, wavelettransform='composite')
+N = 1025. M = 961.
+Constructed bilinear forms in 0.8510116120000001 s.
+
+Memory after meshing: 143.16796875mb.
+Memory after space: 148.48046875mb.
+Memory after precond: 151.15625mb.
+Memory after construction: 152.61328125mb.
+
+........................................
+Lanczos:  converged	its=41	lmax=9.168054455148955	lmin=0.45172722591201814	kappa=20.295554328475642	time=190.35099942300002 s
+Time spent:  181.67137816899998
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+
+
+Creating mesh with 10 time refines and 4 space refines.
+MPI tasks:  48
+Arguments: Namespace(J_space=4, J_time=10, alpha=0.3, kappa2=True, precond='mg', problem='square', smoothsteps=2, solve=False, vcycles=1, wavelettransform='composite')
+N = 1025. M = 961.
+Constructed bilinear forms in 0.795860973 s.
+
+Memory after meshing: 143.86328125mb.
+Memory after space: 147.921875mb.
+Memory after precond: 150.73828125mb.
+Memory after construction: 151.88671875mb.
+
+..................................
+Lanczos:  converged	its=35	lmax=9.599386237864223	lmin=1.1623621017889532	kappa=8.25851619137455	time=163.24025745900002 s
+Time spent:  153.541657928
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+
+
+Creating mesh with 10 time refines and 4 space refines.
+MPI tasks:  48
+Arguments: Namespace(J_space=4, J_time=10, alpha=0.3, kappa2=True, precond='mg', problem='square', smoothsteps=3, solve=False, vcycles=1, wavelettransform='composite')
+N = 1025. M = 961.
+Constructed bilinear forms in 0.762159321 s.
+
+Memory after meshing: 143.40234375mb.
+Memory after space: 148.40234375mb.
+Memory after precond: 151.10546875mb.
+Memory after construction: 152.5078125mb.
+
+...............................................
+Lanczos:  converged	its=48	lmax=10.080260868410104	lmin=1.2436110773698934	kappa=8.105637728580541	time=227.186013494 s
+Time spent:  209.740782711
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+
+
+Creating mesh with 10 time refines and 4 space refines.
+MPI tasks:  48
+Arguments: Namespace(J_space=4, J_time=10, alpha=0.3, kappa2=True, precond='mg', problem='square', smoothsteps=1, solve=False, vcycles=2, wavelettransform='composite')
+N = 1025. M = 961.
+Constructed bilinear forms in 1.34555188 s.
+
+Memory after meshing: 142.86328125mb.
+Memory after space: 148.0703125mb.
+Memory after precond: 150.80859375mb.
+Memory after construction: 152.1875mb.
+
+....................................
+Lanczos:  converged	its=37	lmax=10.481753438091292	lmin=1.1694678000194842	kappa=8.96284056552618	time=174.63331913500002 s
+Time spent:  165.21446589299998
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+
+
+Creating mesh with 10 time refines and 4 space refines.
+MPI tasks:  48
+Arguments: Namespace(J_space=4, J_time=10, alpha=0.3, kappa2=True, precond='mg', problem='square', smoothsteps=2, solve=False, vcycles=2, wavelettransform='composite')
+N = 1025. M = 961.
+Constructed bilinear forms in 1.1440334030000001 s.
+
+Memory after meshing: 143.23046875mb.
+Memory after space: 148.375mb.
+Memory after precond: 151.15625mb.
+Memory after construction: 152.5546875mb.
+
+......................................
+Lanczos:  converged	its=39	lmax=10.901022937682857	lmin=1.343056930073863	kappa=8.116575473150897	time=180.774612605 s
+Time spent:  174.76900534199999
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+
+
+Creating mesh with 10 time refines and 4 space refines.
+MPI tasks:  48
+Arguments: Namespace(J_space=4, J_time=10, alpha=0.3, kappa2=True, precond='mg', problem='square', smoothsteps=3, solve=False, vcycles=2, wavelettransform='composite')
+N = 1025. M = 961.
+Constructed bilinear forms in 0.747252143 s.
+
+Memory after meshing: 143.16796875mb.
+Memory after space: 148.6328125mb.
+Memory after precond: 150.8671875mb.
+Memory after construction: 152.20703125mb.
+
+......................................
+Lanczos:  converged	its=39	lmax=10.968750320788613	lmin=1.3479070668425421	kappa=8.137616153673557	time=186.326399315 s
+Time spent:  177.300044525
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+
+
+Creating mesh with 10 time refines and 4 space refines.
+MPI tasks:  48
+Arguments: Namespace(J_space=4, J_time=10, alpha=0.3, kappa2=True, precond='mg', problem='square', smoothsteps=1, solve=False, vcycles=3, wavelettransform='composite')
+N = 1025. M = 961.
+Constructed bilinear forms in 0.7394071980000001 s.
+
+Memory after meshing: 143.328125mb.
+Memory after space: 148.63671875mb.
+Memory after precond: 151.15234375mb.
+Memory after construction: 152.5234375mb.
+
+......................................
+Lanczos:  converged	its=39	lmax=10.906910134347047	lmin=1.337813536632504	kappa=8.152787990022533	time=190.15956273 s
+Time spent:  178.07307887000002
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+
+
+Creating mesh with 10 time refines and 4 space refines.
+MPI tasks:  48
+Arguments: Namespace(J_space=4, J_time=10, alpha=0.3, kappa2=True, precond='mg', problem='square', smoothsteps=2, solve=False, vcycles=3, wavelettransform='composite')
+N = 1025. M = 961.
+Constructed bilinear forms in 0.796489643 s.
+
+Memory after meshing: 143.05078125mb.
+Memory after space: 148.1015625mb.
+Memory after precond: 150.8125mb.
+Memory after construction: 152.1953125mb.
+
+......................................
+Lanczos:  converged	its=39	lmax=11.010308820962393	lmin=1.3495872109167624	kappa=8.158278866234358	time=187.991415155 s
+Time spent:  180.142941387
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+importing NGSolve-6.2.2007
+
+
+Creating mesh with 10 time refines and 4 space refines.
+MPI tasks:  48
+Arguments: Namespace(J_space=4, J_time=10, alpha=0.3, kappa2=True, precond='mg', problem='square', smoothsteps=3, solve=False, vcycles=3, wavelettransform='composite')
+N = 1025. M = 961.
+Constructed bilinear forms in 0.876528539 s.
+
+Memory after meshing: 143.67578125mb.
+Memory after space: 148.8203125mb.
+Memory after precond: 151.34765625mb.
+Memory after construction: 152.31640625mb.
+
+........................................
+Lanczos:  converged	its=41	lmax=11.018164531501458	lmin=1.3512876685145883	kappa=8.153826004801218	time=204.659468088 s
+Time spent:  191.439582804

@@ -1,0 +1,116 @@
+Creating mesh with 9 time refines and 7 space refines.
+MPI tasks:  16
+Arguments: Namespace(J_space=7, J_time=9, smoothsteps=3, vcycles=2, wavelettransform='composite')
+N = 513. M = 65025.
+Constructed bilinear forms in 3.576750213978812 s.
+Memory after ngsolve: 277.625mb.
+Memory after shared mat: 271.609375mb.
+Memory after precond: 318.859375mb.
+Memory 0 after construction: 304.03515625mb.
+Memory 1 after construction: 256.5390625mb.
+...............................
+Completed in 31 PCG steps.
+Total solve time: 156.2998541139532s.
+W:  0.17650    0.01768
+S:  2.96531    0.07272
+WT: 0.15783    0.02179
+P:  1.42112    0.00000
+Memory after solve: 320.109375mb.
+
+
+Creating mesh with 9 time refines and 7 space refines.
+MPI tasks:  32
+Arguments: Namespace(J_space=7, J_time=9, smoothsteps=3, vcycles=2, wavelettransform='composite')
+N = 513. M = 65025.
+Constructed bilinear forms in 3.5616105860099196 s.
+Memory after ngsolve: 278.3671875mb.
+Memory after shared mat: 272.11328125mb.
+Memory after precond: 319.3046875mb.
+Memory 0 after construction: 296.59375mb.
+Memory 1 after construction: 248.43359375mb.
+...............................
+Completed in 31 PCG steps.
+Total solve time: 78.90247410489246s.
+W:  0.09168    0.01354
+S:  1.46949    0.05861
+WT: 0.10593    0.03957
+P:  0.70563    0.00000
+Memory after solve: 296.64453125mb.
+
+
+Creating mesh with 9 time refines and 7 space refines.
+MPI tasks:  64
+Arguments: Namespace(J_space=7, J_time=9, smoothsteps=3, vcycles=2, wavelettransform='composite')
+N = 513. M = 65025.
+Constructed bilinear forms in 2.9789098959881812 s.
+Memory after ngsolve: 278.4921875mb.
+Memory after shared mat: 270.7265625mb.
+Memory after precond: 319.09375mb.
+Memory 0 after construction: 299.890625mb.
+Memory 1 after construction: 244.421875mb.
+...............................
+Completed in 31 PCG steps.
+Total solve time: 35.67431549401954s.
+W:  0.04651    0.01013
+S:  0.62367    0.00547
+WT: 0.08241    0.04853
+P:  0.31153    0.00000
+Memory after solve: 317.3671875mb.
+
+
+Creating mesh with 9 time refines and 7 space refines.
+MPI tasks:  128
+Arguments: Namespace(J_space=7, J_time=9, smoothsteps=3, vcycles=2, wavelettransform='composite')
+N = 513. M = 65025.
+Constructed bilinear forms in 2.975695062894374 s.
+Memory after ngsolve: 276.6875mb.
+Memory after shared mat: 271.40234375mb.
+Memory after precond: 319.734375mb.
+Memory 0 after construction: 294.57421875mb.
+Memory 1 after construction: 242.62890625mb.
+...............................
+Completed in 31 PCG steps.
+Total solve time: 19.30657001794316s.
+W:  0.02748    0.00944
+S:  0.29174    0.00329
+WT: 0.08391    0.06698
+P:  0.15386    0.00000
+Memory after solve: 294.8828125mb.
+
+Creating mesh with 9 time refines and 7 space refines.
+MPI tasks:  256
+Arguments: Namespace(J_space=7, J_time=9, smoothsteps=3, vcycles=2, wavelettransform='composite')
+N = 513. M = 65025.
+Constructed bilinear forms in 2.9953864691779017 s.
+Memory after ngsolve: 279.02734375mb.
+Memory after shared mat: 270.6015625mb.
+Memory after precond: 319.01953125mb.
+Memory 0 after construction: 290.9296875mb.
+Memory 1 after construction: 243.10546875mb.
+...............................
+Completed in 31 PCG steps.
+Total solve time: 14.428517804015428s.
+W:  0.02268    0.01058
+S:  0.14364    0.00248
+WT: 0.12424    0.11235
+P:  0.07873    0.00000
+Memory after solve: 291.33203125mb.
+
+Creating mesh with 9 time refines and 7 space refines.
+MPI tasks:  512
+Arguments: Namespace(J_space=7, J_time=9, smoothsteps=3, vcycles=2, wavelettransform='composite')
+N = 513. M = 65025.
+Constructed bilinear forms in 3.020984607981518 s.
+Memory after ngsolve: 278.65625mb.
+Memory after shared mat: 270.8359375mb.
+Memory after precond: 319.22265625mb.
+Memory 0 after construction: 288.69140625mb.
+Memory 1 after construction: 240.50390625mb.
+...............................
+Completed in 31 PCG steps.
+Total solve time: 10.228538759984076s.
+W:  0.01568    0.00400
+S:  0.08291    0.00859
+WT: 0.10552    0.09333
+P:  0.04416    0.00000
+Memory after solve: 288.69140625mb.

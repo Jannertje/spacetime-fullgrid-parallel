@@ -1,0 +1,17 @@
+importing NGSolve-6.2.2006
+
+
+Creating mesh with 4 time refines and 3 space refines.
+MPI tasks:  1
+Arguments: Namespace(J_space=3, J_time=4, alpha=0.3, kappa2=True, precond='direct', problem='square', smoothsteps=3, solve=False, vcycles=2, wavelettransform='original')
+N = 17. M = 225.
+Constructed bilinear forms in 0.059146 s.
+
+Memory after meshing: 74.5859375mb.
+Memory after space: 76.01953125mb.
+Memory after precond: 76.7578125mb.
+Memory after construction: 77.296875mb.
+
+.........................
+Lanczos:  converged	its=26	lmax=8.783266719407532	lmin=1.4907125797788896	kappa=5.891992083886696	time=0.9824009999999999 s
+Time spent:  0.991628
