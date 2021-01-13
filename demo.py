@@ -3,17 +3,16 @@ import time
 import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg
-from ngsolve import *
+from ngsolve import H1, InnerProduct, Preconditioner, ds, dx, grad, ngsglobals, L2
 
 from mpi_kron import as_matrix
-from bilform import *
-from fespace import *
-from lanczos import *
-from linalg import *
-from linform import *
-from linop import *
-from mesh import *
-from problem import *
+from bilform import KronBF, XPreconditioner
+from bilform import WaveletTransform
+from linalg import PCG
+from linop import AsLinearOperator, KronLinOp
+from linform import LinForm, KronLF
+from fespace import KronFES
+from problem import square, cube
 
 ngsglobals.msg_level = 0
 
@@ -73,7 +72,6 @@ class HeatEquation:
         u0_lf = KronLF(X, lambda v: v * ds('start'),
                        lambda v: data['u0'] * v * dx)
         u0_lf.assemble()
-        print(self.g_vec)
 
         self.f = self.BT @ self.K @ self.g_vec + u0_lf.vec
 
