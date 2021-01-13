@@ -48,8 +48,10 @@ class KronBF:
     def assemble(self):
         self.time.assemble()
         self.space.assemble()
-        self.linop = KronLinOp(self.time.mat, self.space.mat)
-        return self.linop
+        return KronLinOp(self.time.mat, self.space.mat)
+
+    def transpose(self):
+        return KronLinOp(self.time.mat.T, self.space.mat.T)
 
 
 def WaveletTransform(fes):

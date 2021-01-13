@@ -2,7 +2,6 @@ import numpy as np
 import scipy.sparse
 from mpi4py import MPI
 
-from demo import demo
 from lanczos import Lanczos
 from linalg import PCG
 from linop import AsLinearOperator, CompositeLinOp

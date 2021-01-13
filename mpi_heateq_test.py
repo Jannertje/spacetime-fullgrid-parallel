@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.sparse
 
-from demo import demo
+from demo import HeatEquation
 from lanczos import Lanczos
 from linalg import PCG
 from linop import AsLinearOperator, CompositeLinOp
@@ -84,9 +84,8 @@ def test_S_apply():
         x_glob = np.random.rand(N * M) * 1.0
 
         # Compare to demo
-        _, _, _, S, _, _, _, _, _, _, _ = demo(*square(refines),
-                                               precond='direct')
-        y_glob = S @ x_glob
+        heat_eq = HeatEquation(*square(refines), precond='direct')
+        y_glob = heat_eq.S @ x_glob
 
         # Compare to np.kron
         S = sum([linop.as_matrix() for linop in heat_eq_mpi.S.linops])
@@ -120,11 +119,11 @@ def test_solve():
             f_glob_mpi = np.empty(N * M)
 
             # Extract f_glob from demo.
-            _, _, _, S, _, _, _, _, f_glob_demo, _, _ = demo(*square(refines),
-                                                             precond='direct')
+            heat_eq = HeatEquation(*square(refines), precond='direct')
 
             # Solve on root.
-            u_glob_demo, _ = PCG(S, scipy.sparse.identity(N * M), f_glob_demo)
+            u_glob_demo, _ = PCG(heat_eq.S, scipy.sparse.identity(N * M),
+                                 heat_eq.f)
 
         # Solve using mpi.
         def cb(w, residual, k):
@@ -142,7 +141,7 @@ def test_solve():
         # Compare to demo.
         heat_eq_mpi.rhs.gather(f_glob_mpi)
         if rank == 0:
-            assert (np.allclose(f_glob_demo, f_glob_mpi))
+            assert (np.allclose(heat_eq.f, f_glob_mpi))
             assert (np.allclose(u_glob_demo, u_glob_mpi))
 
 
@@ -170,11 +169,11 @@ def test_demo():
                                       precond='direct',
                                       problem=problem)
 
-        _, _, WT, S, W, _, P, _, _, _, _ = demo(*problem_helper(
-            problem, refines),
-                                                precond='direct')
-        linop_test_MPI(heat_eq_mpi.WT_S_W, as_matrix(WT @ S @ W))
-        linop_test_MPI(heat_eq_mpi.P, as_matrix(P))
+        heat_eq = HeatEquation(*problem_helper(problem, refines),
+                               precond='direct')
+        linop_test_MPI(heat_eq_mpi.WT_S_W,
+                       as_matrix(heat_eq.WT @ heat_eq.S @ heat_eq.W))
+        linop_test_MPI(heat_eq_mpi.P, as_matrix(heat_eq.P))
 
         for refines in range(1, 3):
             heat_eq_mpi = HeatEquationMPI(refines,
@@ -186,14 +185,14 @@ def test_demo():
             linearity_test_MPI(heat_eq_mpi.WT_S_W)
             linearity_test_MPI(heat_eq_mpi.P)
 
-            _, _, WT, S, W, _, P, _, _, _, _ = demo(*problem_helper(
-                problem, refines),
-                                                    precond='direct')
-            linop_test_apply_MPI(heat_eq_mpi.S, S)
-            linop_test_apply_MPI(heat_eq_mpi.W, W)
-            linop_test_apply_MPI(heat_eq_mpi.WT, WT)
-            linop_test_apply_MPI(heat_eq_mpi.WT_S_W, WT @ S @ W)
-            linop_test_apply_MPI(heat_eq_mpi.P, P)
+            heat_eq = HeatEquation(*problem_helper(problem, refines),
+                                   precond='direct')
+            linop_test_apply_MPI(heat_eq_mpi.S, heat_eq.S)
+            linop_test_apply_MPI(heat_eq_mpi.W, heat_eq.W)
+            linop_test_apply_MPI(heat_eq_mpi.WT, heat_eq.WT)
+            linop_test_apply_MPI(heat_eq_mpi.WT_S_W,
+                                 heat_eq.WT @ heat_eq.S @ heat_eq.W)
+            linop_test_apply_MPI(heat_eq_mpi.P, heat_eq.P)
 
 
 def test_preconditioner():
@@ -219,7 +218,6 @@ def test_preconditioner():
 
     if w_mpi.rank == 0:
         # Compare to demo
-        _, _, WT, S, W, _, P, _, _, _, _ = demo(*square(refines),
-                                                precond='direct')
-        lanczos_demo = Lanczos(WT @ S @ W, P)
+        heat_eq = HeatEquation(*square(refines), precond='direct')
+        lanczos_demo = Lanczos(heat_eq.WT @ heat_eq.S @ heat_eq.W, heat_eq.P)
         assert abs(lanczos_mpi.cond() - lanczos_demo.cond()) < 0.4
