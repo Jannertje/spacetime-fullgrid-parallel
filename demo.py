@@ -53,7 +53,7 @@ class HeatEquation:
         # Preconditioners.
         Kinv_time_pc = Preconditioner(A_bf.time.bf, 'direct')
         Kinv_space_pc = Preconditioner(A_bf.space.bf, precond)
-        K = A_bf.assemble()
+        A_bf.assemble()
         Kinv_time = AsLinearOperator(Kinv_time_pc.mat, Y.time.fd)
         Kinv_space = AsLinearOperator(Kinv_space_pc.mat, Y.space.fd)
         self.K = KronLinOp(Kinv_time, Kinv_space)
@@ -67,7 +67,7 @@ class HeatEquation:
             matvec=lambda v: self.BT @ self.K @ self.B @ v + self.G @ v)
 
         # Calculate rhs.
-        g_vec = np.zeros(K.shape[0])
+        g_vec = np.zeros(self.K.shape[0])
         for g in data['g']:
             g_lf = KronLF(Y, lambda v: g[0] * v * dt, lambda v: g[1] * v * dx)
             g_lf.assemble()
@@ -81,7 +81,7 @@ class HeatEquation:
 
 if __name__ == '__main__':
     output = True
-    precond = 'multigrid'
+    precond = 'direct'
     order = 1
 
     for N in [1, 2, 3, 4, 5, 6]:
