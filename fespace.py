@@ -1,4 +1,5 @@
 class KronFES:
+    """ Wrapper around ngsolve::FESpace. """
     def __init__(self, fes_time, fes_space):
         self.time = fes_time
         self.space = fes_space

@@ -3,6 +3,7 @@ from ngsolve import LinearForm
 
 
 class LinForm:
+    """ Wrapper around ngsolve::LinearForm. """
     def __init__(self, fes, linform_lambda):
         self.fes = fes
         self.lf = LinearForm(fes)
@@ -15,6 +16,7 @@ class LinForm:
 
 
 class KronLF:
+    """ Kronecker product of two LinForms. """
     def __init__(self, fes, time_lambda, space_lambda):
         self.time = LinForm(fes.time, time_lambda)
         self.space = LinForm(fes.space, space_lambda)

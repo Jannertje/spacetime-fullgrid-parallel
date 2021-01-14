@@ -1,12 +1,10 @@
-# Parallel space-time fullgrid solution to the heat equation
+# A scalable algorithm for solving linear parabolic equations
+This repository supplements arXiv:2009.08875.
 
-## Instructions:
-follow the NGSolve install instructions from https://ngsolve.org/docu/latest/install/install_sources.html
-with extra option `-DUSE_MPI=ON -DUSE_MPI4PY=ON`. Later on, we will want to compile also with
-`-DUSE_HYPRE=ON`, because we want to use the scalable HYPRE preconditioner
-for shared-memory parallellism in space. I think the current build may be broken,
-but they are actively pushing stuff with the `mpi4py` library.
+We implemented our algorithm in Python using the open source finite element
+library NGSolve for meshing and descretization of the bilinear forms in space
+and time, MPI through mpi4py for distributed computations, and SciPy for the
+sparse matrix-vector computations.
 
-The serial code can be run with `ngspy demo.py` (basically `python` with some
-extra hooks) or `netgen demo.py` (the entire NGSolve gui). MPI code can be run
-with `mpiexec -np X ngspy demo.py`.
+## Instructions
+Follow the NGSolve install instructions from https://ngsolve.org/docu/latest/install/install_sources.html

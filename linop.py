@@ -4,6 +4,7 @@ from scipy.sparse.linalg import LinearOperator
 
 
 def KronLinOp(mat_time, mat_space):
+    """ Apply x \mapsto (A \kron B) x efficiently in a matrix-free way. """
     N, K = mat_time.shape
     M, L = mat_space.shape
 
@@ -15,6 +16,7 @@ def KronLinOp(mat_time, mat_space):
 
 
 def InvLinOp(mat):
+    """ Direct inverse as a linear operator. """
     splu = sp.linalg.splu(
         mat,
         options={"SymmetricMode": True},
@@ -25,6 +27,7 @@ def InvLinOp(mat):
 
 
 def BlockDiagLinOp(linops):
+    """ Block diagonal as a linear operator. """
     height = sum(linop.shape[0] for linop in linops)
     width = sum(linop.shape[1] for linop in linops)
 
@@ -42,6 +45,7 @@ def BlockDiagLinOp(linops):
 
 
 def BlockLinOp(linops):
+    """ Block of linear operators as a linear operator. """
     height = sum(row[0].shape[0] for row in linops)
     width = sum(mat.shape[1] for mat in linops[0])
 
@@ -62,6 +66,7 @@ def BlockLinOp(linops):
 
 
 class CompositeLinOp(sp.linalg.LinearOperator):
+    """ x \mapsto ABx as a linear operator. """
     def __init__(self, linops):
         super().__init__(dtype=np.float64,
                          shape=(linops[0].shape[0], linops[-1].shape[1]))
@@ -75,6 +80,7 @@ class CompositeLinOp(sp.linalg.LinearOperator):
 
 
 def AsLinearOperator(ngmat, freedofs):
+    """ Wrapper around an NGSolve matrix/preconditioner. """
     tmp1 = ngmat.CreateRowVector()
     tmp2 = ngmat.CreateColVector()
 
