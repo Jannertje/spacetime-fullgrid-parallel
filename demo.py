@@ -3,167 +3,102 @@ import time
 import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg
-from ngsolve import *
+from ngsolve import H1, InnerProduct, Preconditioner, ds, dx, grad, ngsglobals, L2
 
-from bilform import *
-from fespace import *
-from lanczos import *
-from linalg import *
-from linform import *
-from linop import *
-from mesh import *
-from problem import *
+from mpi_kron import as_matrix
+from bilform import KronBF, XPreconditioner
+from bilform import WaveletTransform
+from linalg import PCG
+from linop import AsLinearOperator, KronLinOp
+from linform import LinForm, KronLF
+from fespace import KronFES
+from problem import square, cube
 
 ngsglobals.msg_level = 0
 
 
-# Parallel-in-time only
-def setup_local_communicators(X, Y):
-    assert X.time.globalorder == 1 and Y.time.globalorder >= 1
-    assert X.time.mesh.ne % mpi_world.size == 0
-    assert mpi_world.size > 1
+class HeatEquation:
+    def __init__(self,
+                 mesh_space,
+                 bc,
+                 mesh_time,
+                 data,
+                 fn,
+                 precond='multigrid',
+                 order=1):
+        # Building fespaces X^\delta and Y^\delta
+        X = KronFES(H1(mesh_time, order=order),
+                    H1(mesh_space, order=order, dirichlet=bc))
+        Y = KronFES(L2(mesh_time, order=order), X.space)
 
-    n = mpi_world.rank
-    N = mpi_world.size
-    slice_size = int(X.time.mesh.ne / N)
-    print("hier", n, N)
-    mpi_timeslice = mpi_world.SubComm([(n - 1) % N, n, (n + 1) % N])
-    print("daar")
-    return mpi_timeslice
+        # Building the ngsolve spacetime-bilforms.
+        dt = dx
+        A_bf = KronBF(Y, Y, lambda u, v: u * v * dt,
+                      lambda u, v: InnerProduct(grad(u), grad(v)) * dx)
+        B1_bf = KronBF(X, Y, lambda u, v: grad(u) * v * dt,
+                       lambda u, v: u * v * dx)
+        B2_bf = KronBF(X, Y, lambda u, v: u * v * dt,
+                       lambda u, v: InnerProduct(grad(u), grad(v)) * dx)
+        G_bf = KronBF(X, X, lambda u, v: u * v * ds('start'),
+                      lambda u, v: u * v * dx)
 
+        # Create the kron linops.
+        self.B = B1_bf.assemble() + B2_bf.assemble()
+        self.BT = B1_bf.transpose() + B2_bf.transpose()
+        self.G = G_bf.assemble()
 
-def demo(mesh_space, bc, mesh_time, data, fn, precond='multigrid', order=1):
-    print("Building fespaces")
-    X = KronFES(H1(mesh_time, order=order),
-                H1(mesh_space, order=order, dirichlet=bc))
-    Y = KronFES(L2(mesh_time, order=order), X.space)
+        # Preconditioners.
+        Kinv_time_pc = Preconditioner(A_bf.time.bf, 'direct')
+        Kinv_space_pc = Preconditioner(A_bf.space.bf, precond)
+        A_bf.assemble()
+        Kinv_time = AsLinearOperator(Kinv_time_pc.mat, Y.time.fd)
+        Kinv_space = AsLinearOperator(Kinv_space_pc.mat, Y.space.fd)
+        self.K = KronLinOp(Kinv_time, Kinv_space)
+        self.P = XPreconditioner(X, precond=precond)
 
-    #if mpi_world.size > 1:
-    #    mpi_timeslice = setup_local_communicators(X, Y)
+        self.W, self.WT = WaveletTransform(X)
 
-    dt = dx
-    print("Building bilforms")
-    print("Building C. ", end='', flush=True)
-    C_bf = KronBF(X, Y, lambda u, v: grad(u) * v * dt, lambda u, v: u * v * dx)
-    print("done.")
-    print("Building AXY. ", end='', flush=True)
-    AXY_bf = KronBF(X, Y, lambda u, v: u * v * dt,
-                    lambda u, v: InnerProduct(grad(u), grad(v)) * dx)
-    print("done.")
+        # Schur-complement operator.
+        self.S = sp.linalg.LinearOperator(
+            self.G.shape,
+            matvec=lambda v: self.BT @ self.K @ self.B @ v + self.G @ v)
 
-    print("Building K. ", end='', flush=True)
-    K_bf = KronBF(Y, Y, lambda u, v: u * v * dt,
-                  lambda u, v: InnerProduct(grad(u), grad(v)) * dx)
-    print("done.")
-    A_bf = KronBF(X, X, lambda u, v: u * v * dt,
-                  lambda u, v: InnerProduct(grad(u), grad(v)) * dx)
-    A_t = BilForm(X.time, X.time, lambda u, v: grad(u) * grad(v) * dt)
-    print("building Gamma_T. ", end='', flush=True)
-    GT_bf = KronBF(X, X, lambda u, v: u * v * ds('end'),
-                   lambda u, v: u * v * dx)
-    print("done.")
-    print("Assembling matrices. ", end='', flush=True)
+        # Calculate rhs.
+        self.g_vec = np.zeros(self.K.shape[0])
+        for g in data['g']:
+            g_lf = KronLF(Y, lambda v: g[0] * v * dt, lambda v: g[1] * v * dx)
+            g_lf.assemble()
+            self.g_vec += g_lf.vec
+        u0_lf = KronLF(X, lambda v: v * ds('start'),
+                       lambda v: data['u0'] * v * dx)
+        u0_lf.assemble()
 
-    C = C_bf.assemble()
-    AXY = AXY_bf.assemble()
-    A = A_bf.assemble()
-    CT = KronLinOp(C_bf.time.mat.T, C_bf.space.mat.T)
-    A_t.assemble()
-    GT = GT_bf.assemble()
-    print("done.")
-
-    print("building Kinv. ", end='', flush=True)
-    Kinv_time_pc = Preconditioner(K_bf.time.bf, 'direct')
-    Kinv_space_pc = Preconditioner(K_bf.space.bf, precond)
-    K = K_bf.assemble()
-    Kinv_time = AsLinearOperator(Kinv_time_pc.mat, Y.time.fd)
-    Kinv_space = AsLinearOperator(Kinv_space_pc.mat, Y.space.fd)
-    Kinv = KronLinOp(Kinv_time, Kinv_space)
-    print("done.")
-    print("building P. ", end='', flush=True)
-    P = XPreconditioner(X, precond=precond)
-    print("done")
-
-    print("Building wavelet transform. ", end='', flush=True)
-    W, WT = WaveletTransform(X)
-    print("done.")
-
-    print("Building S. ", end='', flush=True)
-    Salt = sp.linalg.LinearOperator(
-        GT.shape, matvec=lambda v: CT @ Kinv @ C @ v + A @ v + GT @ v)
-    Yprime_linop = KronLinOp(
-        A_t.mat, CompositeLinOp([GT_bf.space.mat, Kinv_space,
-                                 GT_bf.space.mat]))
-    S = sp.linalg.LinearOperator(
-        GT.shape, matvec=lambda v: Yprime_linop @ v + A @ v + GT @ v)
-    print("done.")
-    start = time.process_time()
-    v = np.random.random(GT.shape[0])
-    out1 = Salt @ v
-    print("NewMethod S apply speed: ", time.process_time() - start)
-    start = time.process_time()
-    out2 = S @ v
-    print("Optimized S apply speed: ", time.process_time() - start)
-    assert np.allclose(out1, out2)
-
-    print(len(X.time.fd), len(X.space.fd), len(Y.time.fd))
-
-    #lanczos = Lanczos(A=WT @ S @ W, P=K)
-    #print(lanczos.cond())
-
-    print("Building linforms. ", end='', flush=True)
-    g_vec = np.zeros(K.shape[0])
-    for g in data['g']:
-        g_lf = KronLF(Y, lambda v: g[0] * v * dt, lambda v: g[1] * v * dx)
-        g_lf.assemble()
-        g_vec += g_lf.vec
-
-    u0_lf = KronLF(X, lambda v: v * ds('start'), lambda v: data['u0'] * v * dx)
-    u0_lf.assemble()
-
-    CTKinvX = KronLinOp(CompositeLinOp([C_bf.time.mat.T, Kinv_time]),
-                        sp.eye(GT_bf.space.mat.shape[0]))
-    NKinvXid = KronLinOp(CompositeLinOp([AXY_bf.time.mat.T, Kinv_time]),
-                         sp.eye(GT_bf.space.mat.shape[0]))
-    f = CTKinvX @ g_vec + NKinvXid @ g_vec + u0_lf.vec
-    print("done.")
-    return X, Y, WT, S, W, C, P, Kinv, f, g_vec, AXY
+        self.f = self.BT @ self.K @ self.g_vec + u0_lf.vec
 
 
 if __name__ == '__main__':
     output = True
-    precond = 'multigrid'
-    order = 1
+    precond = 'direct'
+    order = 1  # Higher order requires a different wavelet transform.
 
     for N in [1, 2, 3, 4, 5, 6]:
         print("Building problem for N = {}".format(N))
-        mesh_space, bc, mesh_time, data, fn = square(N)
-        X, Y, WT, S, W, C, P, Kinv, f, g_vec, AXY = demo(
-            mesh_space, bc, mesh_time, data, fn, precond, order)
-
-        print('cond(P @ WT @ S @ W)', Lanczos(WT @ S @ W, P))
+        heat_eq = HeatEquation(*square(N), precond, order)
 
         def cb(w, residual, k):
-            if k % 10 == 0:
-                v = W @ residual
-                print('.', v.T @ v / (f.T @ f), flush=True)
             print('.', end='', flush=True)
 
         print("solving")
-        w, iters = PCG(WT @ S @ W, P, WT @ f, callback=cb)
-        u = W @ w
-        gminBu = g_vec - AXY @ u - C @ u
-        print("done in ", iters, " PCG steps. X-norm error: ",
-              gminBu.T @ (Kinv @ gminBu))
-        if output:
-            print(np.max(u))
-            u_dekron = u.reshape(len(X.time.fd), len(X.space.fd))
-            gf_space = GridFunction(X.space)
-            vtk = VTKOutput(ma=mesh_space,
-                            coefs=[gf_space],
-                            names=['u'],
-                            filename='output/%s_%d_now' % (fn, N),
-                            subdivision=order - 1)
-            for t in range(mesh_time.nv):
-                gf_space.vec.FV().NumPy()[X.space.fd] = u_dekron[t, :]
-                vtk.Do()
+        w, iters = PCG(heat_eq.WT @ heat_eq.S @ heat_eq.W,
+                       heat_eq.P,
+                       heat_eq.WT @ heat_eq.f,
+                       callback=cb)
+        u = heat_eq.W @ w
+        res = heat_eq.f - heat_eq.S @ heat_eq.f
+        error_alg = res @ (heat_eq.P @ res)
+
+        gminBu = heat_eq.g_vec - heat_eq.B @ u
+        error_Yprime = gminBu @ (heat_eq.K @ gminBu)
+        print(
+            "done in {}  PCG steps. X-norm algebraic error: {}. Error in Yprime: {}\n"
+            .format(iters, error_alg, error_Yprime))

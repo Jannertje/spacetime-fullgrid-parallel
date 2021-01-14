@@ -3,7 +3,6 @@ import os
 import sys
 
 import numpy as np
-import pyamg
 from ngsolve import H1, InnerProduct, Preconditioner, ds, dx, grad, ngsglobals
 from multigrid import MeshHierarchy, MultiGrid
 from scipy.sparse.linalg.interface import LinearOperator
@@ -29,6 +28,7 @@ def mem():
 
 
 def PyAMG(A):
+    import pyamg
     ml = pyamg.ruge_stuben_solver(A)
 
     def matvec(x):
