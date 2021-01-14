@@ -4,8 +4,9 @@ import numpy as np
 
 
 def shared_numpy_array(array, shared_comm, dtype=np.float64):
-    """ Allocate a numpy array on one thread.
-    Other threads access the same block of memory.
+    """ Allocate a numpy array on one MPI node.
+
+    Other nodes scheduled on the same machine share the same memory block.
     """
     dtype = np.dtype(dtype)
     shape = None
@@ -28,8 +29,9 @@ def shared_numpy_array(array, shared_comm, dtype=np.float64):
 
 
 def shared_sparse_matrix(mat, shared_comm):
-    """ Allocate a sparse matrix on one thread.
-    Other threads access the same block of memory.
+    """ Allocate a sparse matrix on MPI machine.
+    
+    Other MPI nodes scheduled on the same machine share the same data.
     """
     data, indices, indptr = None, None, None
     shape = None

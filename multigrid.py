@@ -13,12 +13,8 @@ from linop import AsLinearOperator
 from mpi_kron import as_matrix
 
 
-def mem():
-    process = psutil.Process(os.getpid())
-    return process.memory_info().rss / 1048576
-
-
 class MeshHierarchy:
+    """ Builds a mesh hierarchy, and prolongation/restriction matrices. """
     def __init__(self, fes, shared_comm=None):
         J = None
         if shared_comm is None or shared_comm.rank == 0:
@@ -87,6 +83,7 @@ class MeshHierarchy:
 
 
 class Smoother:
+    """ SOR smoother, in python. """
     def __init__(self, mat):
         self.mat_rows = [row for row in mat]
         self.invdiag = mat.diagonal()**-1
@@ -103,6 +100,7 @@ class Smoother:
 
 
 class PETScSMoother:
+    """ Uses PETSc for SOR smoothing. Faster implementation in C++. """
     def __init__(self, mat, its):
         self.its = its
         self.mat_petsc = PETSc.Mat().createAIJWithArrays(size=mat.shape,
@@ -132,6 +130,7 @@ class PETScSMoother:
 
 
 class MultiGrid(LinearOperator):
+    """ Simple multigrid implementation for uniform meshes. """
     def __init__(self, mat, hierarchy, smoothsteps=2, vcycles=1):
         self.num_applies = 0
         self.time_applies = 0
