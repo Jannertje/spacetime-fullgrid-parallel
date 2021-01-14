@@ -35,6 +35,16 @@ def WaveletTransformMat(J):
     return T
 
 
+class TransposeLinearOp(sp.linalg.LinearOperator):
+    def __init__(self, linop):
+        super().__init__(dtype=np.float64,
+                         shape=(linop.shape[1], linop.shape[0]))
+        self.linop = linop
+
+    def _matmat(self, x):
+        return self.linop._rmatmat(x)
+
+
 class WaveletTransformOp(sp.linalg.LinearOperator):
     """ A matrix-free transformation from 3-pt wavelet to hat function basis.
     Interleaved means to interleave rows of the p and q matrices.
