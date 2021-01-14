@@ -9,6 +9,7 @@ from mpi_kron import CompositeMPI, SparseKronIdentityMPI, as_matrix
 
 
 def WaveletTransformMat(J):
+    """ The matrix transformation from 3-pt wavelet to hat function basis. """
     def p(j):
         mat = sp.dok_matrix((2**(j - 1) + 1, 2**j + 1))
         mat[:, 0::2] = sp.eye(2**(j - 1) + 1)
@@ -34,17 +35,10 @@ def WaveletTransformMat(J):
     return T
 
 
-class TransposeLinearOp(sp.linalg.LinearOperator):
-    def __init__(self, linop):
-        super().__init__(dtype=np.float64,
-                         shape=(linop.shape[1], linop.shape[0]))
-        self.linop = linop
-
-    def _matmat(self, x):
-        return self.linop._rmatmat(x)
-
-
 class WaveletTransformOp(sp.linalg.LinearOperator):
+    """ A matrix-free transformation from 3-pt wavelet to hat function basis.
+    Interleaved means to interleave rows of the p and q matrices.
+    """
     def __init__(self, J, interleaved=False):
         super().__init__(dtype=np.float64, shape=(2**J + 1, 2**J + 1))
         self.J = J
@@ -126,6 +120,9 @@ class WaveletTransformOp(sp.linalg.LinearOperator):
 
 
 class LevelWaveletTransformOp(WaveletTransformOp):
+    """ The wavelet transform as composition of J matrices.
+    See also eqn (10) from the paper.
+    """
     def __init__(self, J):
         super().__init__(J=J, interleaved=True)
         self.split = []
@@ -169,6 +166,7 @@ class LevelWaveletTransformOp(WaveletTransformOp):
 
 
 class WaveletTransformKronIdentityMPI(CompositeMPI):
+    """ W := W_t \otimes Id_x. """
     def __init__(self, dofs_distr, J):
         wavelet_transform = LevelWaveletTransformOp(J)
         self.levels = wavelet_transform.levels
@@ -180,6 +178,7 @@ class WaveletTransformKronIdentityMPI(CompositeMPI):
 
 
 class TransposedWaveletTransformKronIdentityMPI(CompositeMPI):
+    """ W.T := W_t.T \otimes Id_x. """
     def __init__(self, dofs_distr, J):
         wavelet_transform = LevelWaveletTransformOp(J)
         self.levels = wavelet_transform.levels
@@ -193,6 +192,7 @@ class TransposedWaveletTransformKronIdentityMPI(CompositeMPI):
 
 
 if __name__ == "__main__":
+    """ A quick test. """
     J_time = 9
     M = 50
     N = 513
