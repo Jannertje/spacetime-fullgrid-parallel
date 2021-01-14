@@ -1,12 +1,12 @@
 from math import sqrt
+import scipy
 
 import numpy as np
 
 from mpi_vector import KronVectorMPI, DofDistributionMPI
 from mpi4py import MPI
 from mpi_kron import as_matrix
-from wavelets import (LevelWaveletTransformOp,
-                      TransposedWaveletTransformKronIdentityMPI,
+from wavelets import (TransposedWaveletTransformKronIdentityMPI,
                       WaveletTransformKronIdentityMPI, WaveletTransformMat,
                       WaveletTransformOp)
 
@@ -65,6 +65,12 @@ def test_interleaved_wavelet_transform_works():
     assert (np.allclose(y[2**(J - 1):],
                         np.linspace(sqrt(2), -sqrt(2), 2**(J - 1) + 1)))
 
+    # Apply all the split operations after eachoter
+    Wmat = scipy.sparse.eye(2**J + 1, 2**J + 1, format='csr')
+    for j in range(1, J + 1):
+        Wmat += WOp.split(j) @ Wmat
+    assert np.allclose(as_matrix(WOp), as_matrix(Wmat))
+
 
 def test_mpi_wavelet_transform_works():
     J = 4
@@ -75,10 +81,8 @@ def test_mpi_wavelet_transform_works():
     WOp = WaveletTransformKronIdentityMPI(dofs_distr, J)
     WOpT = TransposedWaveletTransformKronIdentityMPI(dofs_distr, J)
     WOp2 = WaveletTransformOp(J, interleaved=True)
-    WOp3 = LevelWaveletTransformOp(J)
     WOpmat = WOp.as_global_matrix()
     WOpTmat = WOpT.as_global_matrix()
     if rank == 0:
         assert np.allclose(WOpmat, as_matrix(WOp2))
-        assert np.allclose(as_matrix(WOp3), as_matrix(WOp2))
         assert np.allclose(WOpTmat, WOpmat.T)

@@ -9,8 +9,16 @@ from mpi_kron import CompositeMPI, SparseKronIdentityMPI, as_matrix
 
 
 def WaveletTransformMat(J):
-    """ The matrix transformation from 3-pt wavelet to hat function basis. """
+    """ The matrix transformation from 3-pt wavelet to hat function basis.
+
+    The wavelet indices are ordered level-by-level, i.e., for d_k the wavelet
+    coordinates on level k, the input vector is ordered as[d_0, d_1, ..., d_J].
+
+    NOTE: This is a debug function; the resulting matrix is not uniformly 
+          sparse, and therefore cannot be applied in linear complexity.
+    """
     def p(j):
+        """ Prolongate hat function of level j-1 to level j. """
         mat = sp.dok_matrix((2**(j - 1) + 1, 2**j + 1))
         mat[:, 0::2] = sp.eye(2**(j - 1) + 1)
         mat[:, 1::2] = sp.diags([0.5, 0.5], [0, -1],
@@ -18,6 +26,7 @@ def WaveletTransformMat(J):
         return mat.T
 
     def q(j):
+        """ Embed 3-pt wavelets on level j into hat functions on level j. """
         if j == 0: return sp.eye(2)
         mat = sp.dok_matrix((2**(j - 1), 2**j + 1))
         mat[:, 0::2] = sp.diags([-0.5, -0.5], [0, 1],
@@ -37,7 +46,18 @@ def WaveletTransformMat(J):
 
 class WaveletTransformOp(sp.linalg.LinearOperator):
     """ A matrix-free transformation from 3-pt wavelet to hat function basis.
-    Interleaved means to interleave rows of the p and q matrices.
+
+    By iterating over the levels, this applies the `splitting' 
+    operation [p(j), q(j)] in-place in linear complexity.  In view 
+    of parallelism, this implements the Wavelet transform using two
+    different indexing strategies. 
+
+    For interleaved=false, the `canonical' level-by-level indexing is used,
+    i.e., the wavelet vector is ordered as[d_0, d_1, ..., d_J].
+    
+    For interleaved=true, the 3-pt wavelets are numbered according
+    to the associated nodes on the mesh of level J. For example, if J=2,
+    then the wavelets are ordered as [lvl_0, lvl_2, lvl_1, lvl_2, lvl_0].
     """
     def __init__(self, J, interleaved=False):
         super().__init__(dtype=np.float64, shape=(2**J + 1, 2**J + 1))
@@ -85,49 +105,50 @@ class WaveletTransformOp(sp.linalg.LinearOperator):
         result *= 2**(j / 2)
         return result
 
-    def _matmat(self, x):
-        y = x.copy()
+    def _matmat(self, X):
+        Y = X.copy()
         if self.interleaved:
             for j in range(1, self.J + 1):
                 S = 2**(self.J - j)
-                y[::S] = self.p[j] @ y[::S][::2] + self.q[j] @ y[::S][1::2]
+                Y[::S] = self.p[j] @ Y[::S][::2] + self.q[j] @ Y[::S][1::2]
         else:
             for j in range(1, self.J + 1):
                 N_coarse = 2**(j - 1) + 1
                 N_fine = 2**j + 1
-                y[:N_fine] = self.p[j] @ y[:N_coarse] + self.q[j] @ y[
+                Y[:N_fine] = self.p[j] @ Y[:N_coarse] + self.q[j] @ Y[
                     N_coarse:N_fine]
-        return y
+        return Y
 
-    def _rmatmat(self, x):
-        y = x.copy()
+    def _rmatmat(self, X):
+        Y = X.copy()
         if self.interleaved:
             for j in reversed(range(1, self.J + 1)):
                 S = 2**(self.J - j)
-                y[::S][::2], y[::S][
-                    1::2] = self.pT[j] @ y[::S], self.qT[j] @ y[::S]
+                Y[::S][::2], Y[::S][
+                    1::2] = self.pT[j] @ Y[::S], self.qT[j] @ Y[::S]
         else:
             for j in reversed(range(1, self.J + 1)):
                 N_coarse = 2**(j - 1) + 1
                 N_fine = 2**j + 1
-                y[:N_coarse], y[N_coarse:N_fine] = self.pT[
-                    j] @ y[:N_fine], self.qT[j] @ y[:N_fine]
+                Y[:N_coarse], Y[N_coarse:N_fine] = self.pT[
+                    j] @ Y[:N_fine], self.qT[j] @ Y[:N_fine]
 
-        return y
+        return Y
 
+    def split(self, j):
+        """ Helper function that represents operation on level j as a matrix.
 
-class LevelWaveletTransformOp(WaveletTransformOp):
-    """ The wavelet transform as composition of J matrices.
-    See also eqn (10) from the paper.
-    """
-    def __init__(self, J):
-        super().__init__(J=J, interleaved=True)
-        self.split = []
-        for j in range(J + 1):
-            self.split.append(
-                LevelWaveletTransformOp._split(J, j, self.p[j], self.q[j]))
+        This helper function is used to return the matrix [p(j) q(j)]
+        when interleaved=true, as this corresponds to a matrix with rows/columns
+        of p(j) and q(j) interleaved. 
 
-    def _split(J, j, p, q):
+        NOTE: In order to achieve a linear complexity algorithm, this matrix
+              should be applied in-place (or combined with an additional 
+              identity matrix to copy the input vector).
+        """
+        J = self.J
+        p = self.p[j]
+        q = self.q[j]
         if j == 0: return sp.csr_matrix((2**J + 1, 2**J + 1))
 
         rows, cols, vals = [], [], []
@@ -149,41 +170,32 @@ class LevelWaveletTransformOp(WaveletTransformOp):
 
         return sp.csr_matrix((vals, (rows, cols)), shape=(2**J + 1, 2**J + 1))
 
-    def _matmat(self, x):
-        y = x.copy()
-        for j in range(1, self.J + 1):
-            y += self.split[j] @ y
-        return y
-
-    def _rmatmat(self, x):
-        y = x.copy()
-        for j in reversed(range(1, self.J + 1)):
-            y += self.splitT[j] @ y
-        return y
-
 
 class WaveletTransformKronIdentityMPI(CompositeMPI):
     """ W := W_t kron Id_x. """
     def __init__(self, dofs_distr, J):
-        wavelet_transform = LevelWaveletTransformOp(J)
+        wavelet_transform = WaveletTransformOp(J, interleaved=True)
         self.levels = wavelet_transform.levels
         linops = []
-        for split in reversed(wavelet_transform.split[1:]):
+        for j in reversed(range(1, J + 1)):
+            split_mat = wavelet_transform.split(j)
             linops.append(
-                SparseKronIdentityMPI(dofs_distr, split, add_identity=True))
+                SparseKronIdentityMPI(dofs_distr, split_mat,
+                                      add_identity=True))
         super().__init__(dofs_distr, linops)
 
 
 class TransposedWaveletTransformKronIdentityMPI(CompositeMPI):
     """ W.T := W_t.T kron Id_x. """
     def __init__(self, dofs_distr, J):
-        wavelet_transform = LevelWaveletTransformOp(J)
+        wavelet_transform = WaveletTransformOp(J, interleaved=True)
         self.levels = wavelet_transform.levels
         linops = []
-        for split in wavelet_transform.split[1:]:
+        for j in range(1, J + 1):
+            split_mat = wavelet_transform.split(j)
             linops.append(
                 SparseKronIdentityMPI(dofs_distr,
-                                      split.T.tocsr(),
+                                      split_mat.T.tocsr(),
                                       add_identity=True))
         super().__init__(dofs_distr, linops)
 
