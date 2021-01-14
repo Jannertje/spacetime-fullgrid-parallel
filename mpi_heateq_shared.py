@@ -121,11 +121,11 @@ class HeatEquationMPIShared:
         if wavelettransform == 'original':
             self.W_t = WaveletTransformOp(self.J_time)
             self.W = MatKronIdentityMPI(self.dofs_distr, self.W_t)
-            self.WT = MatKronIdentityMPI(self.dofs_distr, self.W_t.H)
+            self.WT = MatKronIdentityMPI(self.dofs_distr, self.W_t.T)
         elif wavelettransform == 'interleaved':
             self.W_t = WaveletTransformOp(self.J_time, interleaved=True)
             self.W = MatKronIdentityMPI(self.dofs_distr, self.W_t)
-            self.WT = MatKronIdentityMPI(self.dofs_distr, self.W_t.H)
+            self.WT = MatKronIdentityMPI(self.dofs_distr, self.W_t.T)
         elif wavelettransform == 'composite':
             self.W = WaveletTransformKronIdentityMPI(self.dofs_distr,
                                                      self.J_time)

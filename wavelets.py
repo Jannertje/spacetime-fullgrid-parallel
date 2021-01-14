@@ -35,16 +35,6 @@ def WaveletTransformMat(J):
     return T
 
 
-class TransposeLinearOp(sp.linalg.LinearOperator):
-    def __init__(self, linop):
-        super().__init__(dtype=np.float64,
-                         shape=(linop.shape[1], linop.shape[0]))
-        self.linop = linop
-
-    def _matmat(self, x):
-        return self.linop._rmatmat(x)
-
-
 class WaveletTransformOp(sp.linalg.LinearOperator):
     """ A matrix-free transformation from 3-pt wavelet to hat function basis.
     Interleaved means to interleave rows of the p and q matrices.
@@ -125,9 +115,6 @@ class WaveletTransformOp(sp.linalg.LinearOperator):
 
         return y
 
-    def _adjoint(self):
-        return TransposeLinearOp(self)
-
 
 class LevelWaveletTransformOp(WaveletTransformOp):
     """ The wavelet transform as composition of J matrices.
@@ -176,7 +163,7 @@ class LevelWaveletTransformOp(WaveletTransformOp):
 
 
 class WaveletTransformKronIdentityMPI(CompositeMPI):
-    """ W := W_t \otimes Id_x. """
+    """ W := W_t kron Id_x. """
     def __init__(self, dofs_distr, J):
         wavelet_transform = LevelWaveletTransformOp(J)
         self.levels = wavelet_transform.levels
@@ -188,7 +175,7 @@ class WaveletTransformKronIdentityMPI(CompositeMPI):
 
 
 class TransposedWaveletTransformKronIdentityMPI(CompositeMPI):
-    """ W.T := W_t.T \otimes Id_x. """
+    """ W.T := W_t.T kron Id_x. """
     def __init__(self, dofs_distr, J):
         wavelet_transform = LevelWaveletTransformOp(J)
         self.levels = wavelet_transform.levels
