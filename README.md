@@ -9,3 +9,6 @@ sparse matrix-vector computations.
 ## Requirements
 - SciPy, version >= 1.4.0.
 - NGsolve, follow the NGSolve install instructions from https://ngsolve.org/docu/latest/install/install_sources.html.
+
+## Instructions
+Run mpi_heateq_shared.py

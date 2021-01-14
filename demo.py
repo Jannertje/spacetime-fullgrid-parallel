@@ -6,10 +6,10 @@ import scipy.sparse.linalg
 from ngsolve import H1, InnerProduct, Preconditioner, ds, dx, grad, ngsglobals, L2
 
 from mpi_kron import as_matrix
-from bilform import KronBF, XPreconditioner
-from bilform import WaveletTransform
+from wavelets import WaveletTransformOp
+from bilform import KronBF, BilForm
 from linalg import PCG
-from linop import AsLinearOperator, KronLinOp
+from linop import AsLinearOperator, KronLinOp, CompositeLinOp, BlockDiagLinOp
 from linform import LinForm, KronLF
 from fespace import KronFES
 from problem import square, cube
@@ -25,6 +25,7 @@ class HeatEquation:
                  data,
                  fn,
                  precond='multigrid',
+                 alpha=0.3,
                  order=1):
         # Building fespaces X^\delta and Y^\delta
         X = KronFES(H1(mesh_time, order=order),
@@ -47,16 +48,36 @@ class HeatEquation:
         self.BT = B1_bf.transpose() + B2_bf.transpose()
         self.G = G_bf.assemble()
 
-        # Preconditioners.
+        # Preconditioner on Y.
         Kinv_time_pc = Preconditioner(A_bf.time.bf, 'direct')
         Kinv_space_pc = Preconditioner(A_bf.space.bf, precond)
         A_bf.assemble()
         Kinv_time = AsLinearOperator(Kinv_time_pc.mat, Y.time.fd)
         Kinv_space = AsLinearOperator(Kinv_space_pc.mat, Y.space.fd)
         self.K = KronLinOp(Kinv_time, Kinv_space)
-        self.P = XPreconditioner(X, precond=precond)
 
-        self.W, self.WT = WaveletTransform(X)
+        # --- Wavelet transform ---
+        J_time = int(np.log(X.time.mesh.ne) / np.log(2))
+        W_t = WaveletTransformOp(J_time)
+        self.W = KronLinOp(W_t, sp.eye(len(X.space.fd)))
+        self.WT = KronLinOp(W_t.T, sp.eye(len(X.space.fd)))
+
+        # --- Preconditioner on X ---
+        self.C_j = []
+        self.alpha = alpha
+        for j in range(J_time + 1):
+            bf = BilForm(X.space,
+                         bilform_lambda=lambda u, v:
+                         (2**j * u * v + self.alpha * grad(u) * grad(v)) * dx)
+            C = Preconditioner(bf.bf, precond)
+            bf.bf.Assemble()
+            self.C_j.append(AsLinearOperator(C.mat, X.space.fd))
+
+        self.CAC_j = [
+            CompositeLinOp([self.C_j[j], A_bf.space.mat, self.C_j[j]])
+            for j in range(J_time + 1)
+        ]
+        self.P = BlockDiagLinOp([self.CAC_j[j] for j in W_t.levels])
 
         # Schur-complement operator.
         self.S = sp.linalg.LinearOperator(
