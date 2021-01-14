@@ -27,6 +27,7 @@ def mem():
 
 
 class HeatEquationMPIShared:
+    """ Creates necessary operators for solving the heatequation using MPI."""
     def __init__(self,
                  J_space=2,
                  J_time=None,
