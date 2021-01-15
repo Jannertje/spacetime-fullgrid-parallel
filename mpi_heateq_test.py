@@ -7,8 +7,8 @@ from linalg import PCG
 from linop import AsLinearOperator, CompositeLinOp
 from mpi4py import MPI
 from mpi_heateq import HeatEquationMPI
-from mpi_kron import (BlockDiagMPI, CompositeMPI, IdentityMPI,
-                      MatKronIdentityMPI, SumMPI, TridiagKronMatMPI, as_matrix)
+from mpi_kron import (BlockDiagMPI, CompositeMPI, MatKronIdentityMPI, SumMPI,
+                      TridiagKronMatMPI, as_matrix)
 from mpi_kron_test import linearity_test_MPI, linop_test_MPI
 from mpi_vector import KronVectorMPI, DofDistributionMPI
 from problem import square, problem_helper

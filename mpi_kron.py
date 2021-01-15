@@ -12,6 +12,7 @@ def as_matrix(operator):
 
 
 class LinearOperatorMPI:
+    """ Base class for linear space-time operators parallelized in time. """
     def __init__(self, dofs_distr):
         self.dofs_distr = dofs_distr
         self.N = dofs_distr.N
@@ -112,6 +113,7 @@ class CompositeMPI(LinearOperatorMPI):
 
 
 class BlockDiagMPI(LinearOperatorMPI):
+    """ Time-parallel application of a time block-diag operator. """
     def __init__(self, dofs_distr, matrices_space):
         N = len(matrices_space)
         M = matrices_space[0].shape[0]
@@ -134,6 +136,7 @@ class BlockDiagMPI(LinearOperatorMPI):
 
 
 class IdentityKronMatMPI(LinearOperatorMPI):
+    """ Time-parallel implementation of the operator: I_t kron M_x. """
     def __init__(self, dofs_distr, mat_space):
         M, L = mat_space.shape
         assert (M == L)
@@ -151,6 +154,8 @@ class IdentityKronMatMPI(LinearOperatorMPI):
 
 
 class TridiagKronIdentityMPI(LinearOperatorMPI):
+    """ Time-parallel implementation of the operator: T_t kron I_x, for
+        some tridiagonal T_t in time. """
     def __init__(self, dofs_distr, mat_time):
         assert (scipy.sparse.isspmatrix_csr(mat_time))
         N, K = mat_time.shape
@@ -201,6 +206,8 @@ class TridiagKronIdentityMPI(LinearOperatorMPI):
 
 
 class TridiagKronMatMPI(LinearOperatorMPI):
+    """ Time-parallel implementation of the operator: T_t kron M_x, for some
+        tridiagonal matrix T_t in time and general matrix M_x in space. """
     def __init__(self, dofs_distr, mat_time, mat_space):
         N = mat_time.shape[0]
         M = mat_space.shape[0]
@@ -221,9 +228,11 @@ class TridiagKronMatMPI(LinearOperatorMPI):
 
 
 class MatKronIdentityMPI(LinearOperatorMPI):
-    """
-    This applies a M kron I by swapping the rearanging the input vector.
-    NOTE: Expensive in communication!.
+    """ Parallel implementation of the operator: M_t kron I_x, for some
+        general purpose M.
+
+    NOTE: This applies M_t kron I_x by  the rearanging the input vector.
+          Very expensive in communication!
     """
     def __init__(self, dofs_distr, mat_time):
         N, K = mat_time.shape
@@ -254,7 +263,11 @@ class MatKronIdentityMPI(LinearOperatorMPI):
 
 
 class SparseKronIdentityMPI(LinearOperatorMPI):
-    """ Requires a square matrix in CSR with symmetric sparsity pattern. """
+    """ Time-parallel implementation of the operator: M_t kron I_x
+    
+    This requires M_t to be some square matrix in CSR format with a symmetric
+    sparsity pattern. It has to communicate the rows that are not available.
+    """
     def __init__(self, dofs_distr, mat_time, add_identity=False):
         super().__init__(dofs_distr)
         assert scipy.sparse.isspmatrix_csr(mat_time)

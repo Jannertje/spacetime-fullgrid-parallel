@@ -1,11 +1,13 @@
 from mpi4py import MPI
 import scipy.sparse
 import numpy as np
-import time
-import sys
 
 
 def shared_numpy_array(array, shared_comm, dtype=np.float64):
+    """ Allocate a numpy array on one MPI node.
+
+    Other nodes scheduled on the same machine share the same memory block.
+    """
     dtype = np.dtype(dtype)
     shape = None
     nbytes = 0
@@ -27,6 +29,10 @@ def shared_numpy_array(array, shared_comm, dtype=np.float64):
 
 
 def shared_sparse_matrix(mat, shared_comm):
+    """ Allocate a sparse matrix on MPI machine.
+    
+    Other MPI nodes scheduled on the same machine share the same data.
+    """
     data, indices, indptr = None, None, None
     shape = None
     if shared_comm.rank == 0:
@@ -42,22 +48,3 @@ def shared_sparse_matrix(mat, shared_comm):
     shared_indptr = shared_numpy_array(indptr, shared_comm, np.int32)
     return scipy.sparse.csr_matrix(
         (shared_data, shared_indices, shared_indptr), shape=shape)
-
-
-#shared_comm = MPI.COMM_WORLD.Split_type(MPI.COMM_TYPE_SHARED)
-#
-#mat = None
-#if shared_comm.rank == 0:
-#    mat = np.array([[3.5, 13., 28.5, 50.,
-#                     77.5], [-5., -23., -53., -95., -149.],
-#                    [2.5, 11., 25.5, 46., 72.5]])
-#    mat = scipy.sparse.spdiags(mat, (1, 0, -1), 5, 5).tocsr()
-#
-#shared_mat = shared_sparse_matrix(mat, shared_comm)
-#
-#print(shared_comm.rank, shared_mat)
-#
-#if shared_comm.rank == 1:
-#    shared_mat[0, 0] = 1337
-#shared_comm.Barrier()
-#print(shared_comm.rank, shared_mat[0, 0])
