@@ -22,3 +22,9 @@ given in mpi_heateq_shared.py. Similar arguments hold, e.g.
 ```bash
 mpirun -np 2 python3 mpi_heateq_shared.py --J_time=3 --J_space=6 --problem=square
 ```
+
+The tests can be run using pytest, e.g.
+```bash
+pytest
+mpirun -np 2 pytest
+```
