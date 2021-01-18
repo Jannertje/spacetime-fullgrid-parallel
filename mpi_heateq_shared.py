@@ -56,10 +56,8 @@ class HeatEquationMPIShared:
 
         if shared_comm.rank == 0:
             from ngsolve import H1, InnerProduct, Preconditioner, ds, dx, grad, ngsglobals
-            from bilform import BilForm
-            from fespace import KronFES
+            from ngsolve_helper import KronFES, KronBF, BilForm, LinForm
             from problem import problem_helper
-            from linform import LinForm
             ngsglobals.msg_level = 0
             mesh_space, bc_space, mesh_time, data, fn = problem_helper(
                 problem, J_space=J_space, J_time=J_time)
