@@ -9,6 +9,16 @@ sparse matrix-vector computations.
 ## Requirements
 - SciPy, version >= 1.4.0.
 - NGsolve, follow the NGSolve install instructions from https://ngsolve.org/docu/latest/install/install_sources.html.
+- mpi4py.
 
 ## Instructions
-Run mpi_heateq_shared.py
+A normal, single-threaded, implementation is given in demo.py.
+```bash
+python3 demo.py --J_time=3 --J_space=6 --problem=square
+```
+
+The results in the paper are gathered using the parallel implementation
+given in mpi_heateq_shared.py. Similar arguments hold, e.g.
+```bash
+mpirun -np 2 python3 mpi_heateq_shared.py --J_time=3 --J_space=6 --problem=square
+```
