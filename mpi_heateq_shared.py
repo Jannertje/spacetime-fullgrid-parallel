@@ -27,7 +27,12 @@ def mem():
 
 
 class HeatEquationMPIShared:
-    """ Creates necessary operators for solving the heatequation using MPI."""
+    """ Creates necessary operators for solving the heatequation using MPI.
+
+    The matrices are created with ngsolve. The matrices are shared 
+    among nodes scheduled on the same physical machine, in order to reduce
+    the (ngsolve) memory footprint.
+    """
     def __init__(self,
                  J_space=2,
                  J_time=None,
