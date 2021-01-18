@@ -25,6 +25,8 @@ class HeatEquation:
                  precond='multigrid',
                  alpha=0.3,
                  order=1):
+        if J_time is None:
+            J_time = J_space
         mesh_space, bc, mesh_time, data, fn = problem_helper(problem,
                                                              J_space=J_space,
                                                              J_time=J_time)

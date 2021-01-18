@@ -7,7 +7,7 @@ from ngsolve import (H1, BaseMatrix, BilinearForm, InnerProduct,
 from ngsolve.la import EigenValues_Preconditioner
 from scipy.sparse import csr_matrix
 
-from bilform import BilForm
+from ngsolve_helper import BilForm
 from lanczos import Lanczos
 from linop import AsLinearOperator
 from mesh import construct_2d_square_mesh, construct_3d_cube_mesh

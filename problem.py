@@ -33,7 +33,7 @@ def cube(J_space, J_time=None):
 def problem_helper(problem, J_space, J_time=None):
     if problem == 'square':
         return square(J_space, J_time)
-    elif problem in ['cube', 'ns']:
+    elif problem == 'cube':
         return cube(J_space, J_time)
     else:
         assert (False)
