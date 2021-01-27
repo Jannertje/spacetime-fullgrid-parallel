@@ -65,10 +65,46 @@ def test_bilforms():
         test_linop(N, M, linop)
 
 
+def test_matrices():
+    # Gather the space/time stiffness matrices.
+    J_time = 4
+    J_space = 2
+    problem = 'square'
+    precond = 'multigrid'
+
+    heat_eq_mpi = HeatEquationMPI(J_time=J_time,
+                                  J_space=J_space,
+                                  problem=problem,
+                                  wavelettransform='original',
+                                  precond=precond)
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+
+    # Gather the (dense) S matrix MPI matrix, expensive.
+    WT_S_W_mpi = heat_eq_mpi.WT_S_W.as_global_matrix()
+    P_mpi = heat_eq_mpi.P.as_global_matrix()
+
+    # Compare on rank 0.
+    if MPI.COMM_WORLD.Get_rank() == 0:
+        # Compare to demo
+        heat_eq = HeatEquation(J_time=J_time,
+                               J_space=J_space,
+                               problem=problem,
+                               precond=precond)
+        WT_S_W = as_matrix(heat_eq.WT_S_W)
+        P = as_matrix(heat_eq.P)
+
+        assert (np.allclose(WT_S_W, WT_S_W_mpi))
+        assert (np.allclose(P, P_mpi))
+
+
 def test_S_apply():
     # Gather the space/time stiffness matrices.
-    refines = 2
-    heat_eq_mpi = HeatEquationMPI(refines, precond='direct')
+    J_time = 4
+    J_space = 2
+    heat_eq_mpi = HeatEquationMPI(J_time=J_time,
+                                  J_space=J_space,
+                                  precond='direct')
     N = heat_eq_mpi.N
     M = heat_eq_mpi.M
 
@@ -84,8 +120,9 @@ def test_S_apply():
         x_glob = np.random.rand(N * M) * 1.0
 
         # Compare to demo
-        heat_eq = HeatEquation(problem='square',
+        heat_eq = HeatEquation(J_time=J_time,
                                J_space=refines,
+                               problem='square',
                                precond='direct')
         y_glob = heat_eq.S @ x_glob
 
@@ -103,9 +140,13 @@ def test_S_apply():
 
 
 def test_solve():
-    refines = 2
-    for wavelettransform in ['mat', 'interleaved', 'matfree']:
-        heat_eq_mpi = HeatEquationMPI(refines, precond='direct')
+    J_time = 4
+    J_space = 2
+    for precond in ['direct', 'multigrid']:
+        heat_eq_mpi = HeatEquationMPI(J_time=J_time,
+                                      J_space=J_space,
+                                      problem='square',
+                                      precond=precond)
         N = heat_eq_mpi.N
         M = heat_eq_mpi.M
         dofs_distr = DofDistributionMPI(MPI.COMM_WORLD, N, M)
@@ -121,9 +162,10 @@ def test_solve():
             f_glob_mpi = np.empty(N * M)
 
             # Extract f_glob from demo.
-            heat_eq = HeatEquation(problem='square',
+            heat_eq = HeatEquation(J_time=J_time,
                                    J_space=refines,
-                                   precond='direct')
+                                   problem='square',
+                                   precond=precond)
 
             # Solve on root.
             u_glob_demo, _ = PCG(heat_eq.S, scipy.sparse.identity(N * M),
@@ -171,6 +213,7 @@ def test_demo():
         refines = 2
         heat_eq_mpi = HeatEquationMPI(refines,
                                       precond='direct',
+                                      wavelettransform='original',
                                       problem=problem)
 
         heat_eq = HeatEquation(problem=problem,
@@ -183,6 +226,7 @@ def test_demo():
         for refines in range(1, 3):
             heat_eq_mpi = HeatEquationMPI(refines,
                                           precond='direct',
+                                          wavelettransform='original',
                                           problem=problem)
             linearity_test_MPI(heat_eq_mpi.S)
             linearity_test_MPI(heat_eq_mpi.W)
