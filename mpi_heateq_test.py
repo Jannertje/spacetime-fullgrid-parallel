@@ -7,8 +7,8 @@ from linalg import PCG
 from linop import AsLinearOperator, CompositeLinOp
 from mpi4py import MPI
 from mpi_heateq import HeatEquationMPI
-from mpi_kron import (BlockDiagMPI, CompositeMPI, MatKronIdentityMPI, SumMPI,
-                      TridiagKronMatMPI, as_matrix)
+from mpi_kron import (BlockDiagMPI, CompositeMPI, IdentityMPI,
+                      MatKronIdentityMPI, SumMPI, TridiagKronMatMPI, as_matrix)
 from mpi_kron_test import linearity_test_MPI, linop_test_MPI
 from mpi_vector import KronVectorMPI, DofDistributionMPI
 from problem import square, problem_helper
@@ -84,7 +84,9 @@ def test_S_apply():
         x_glob = np.random.rand(N * M) * 1.0
 
         # Compare to demo
-        heat_eq = HeatEquation(*square(refines), precond='direct')
+        heat_eq = HeatEquation(problem='square',
+                               J_space=refines,
+                               precond='direct')
         y_glob = heat_eq.S @ x_glob
 
         # Compare to np.kron
@@ -119,7 +121,9 @@ def test_solve():
             f_glob_mpi = np.empty(N * M)
 
             # Extract f_glob from demo.
-            heat_eq = HeatEquation(*square(refines), precond='direct')
+            heat_eq = HeatEquation(problem='square',
+                                   J_space=refines,
+                                   precond='direct')
 
             # Solve on root.
             u_glob_demo, _ = PCG(heat_eq.S, scipy.sparse.identity(N * M),
@@ -163,13 +167,14 @@ def linop_test_apply_MPI(linop_mpi, linop):
 
 
 def test_demo():
-    for problem in ['square', 'ns']:
+    for problem in ['square', 'cube']:
         refines = 2
         heat_eq_mpi = HeatEquationMPI(refines,
                                       precond='direct',
                                       problem=problem)
 
-        heat_eq = HeatEquation(*problem_helper(problem, refines),
+        heat_eq = HeatEquation(problem=problem,
+                               J_space=refines,
                                precond='direct')
         linop_test_MPI(heat_eq_mpi.WT_S_W,
                        as_matrix(heat_eq.WT @ heat_eq.S @ heat_eq.W))
@@ -185,7 +190,8 @@ def test_demo():
             linearity_test_MPI(heat_eq_mpi.WT_S_W)
             linearity_test_MPI(heat_eq_mpi.P)
 
-            heat_eq = HeatEquation(*problem_helper(problem, refines),
+            heat_eq = HeatEquation(problem=problem,
+                                   J_space=refines,
                                    precond='direct')
             linop_test_apply_MPI(heat_eq_mpi.S, heat_eq.S)
             linop_test_apply_MPI(heat_eq_mpi.W, heat_eq.W)
@@ -218,6 +224,8 @@ def test_preconditioner():
 
     if w_mpi.rank == 0:
         # Compare to demo
-        heat_eq = HeatEquation(*square(refines), precond='direct')
+        heat_eq = HeatEquation(problem='square',
+                               J_space=refines,
+                               precond='direct')
         lanczos_demo = Lanczos(heat_eq.WT @ heat_eq.S @ heat_eq.W, heat_eq.P)
         assert abs(lanczos_mpi.cond() - lanczos_demo.cond()) < 0.4

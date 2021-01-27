@@ -1,4 +1,6 @@
 import time
+from problem import problem_helper
+import argparse
 
 import numpy as np
 import scipy.sparse as sp
@@ -7,30 +9,34 @@ from ngsolve import H1, InnerProduct, Preconditioner, ds, dx, grad, ngsglobals, 
 
 from mpi_kron import as_matrix
 from wavelets import WaveletTransformOp
-from bilform import KronBF, BilForm
 from linalg import PCG
 from linop import AsLinearOperator, KronLinOp, CompositeLinOp, BlockDiagLinOp
-from linform import LinForm, KronLF
-from fespace import KronFES
-from problem import square, cube
+from ngsolve_helper import KronFES, KronBF, BilForm, LinForm, KronLF
 
 ngsglobals.msg_level = 0
 
 
 class HeatEquation:
+    """ Implementation of Andreev's method for tensor-product trial spaces. """
     def __init__(self,
-                 mesh_space,
-                 bc,
-                 mesh_time,
-                 data,
-                 fn,
+                 J_space=2,
+                 J_time=None,
+                 problem='square',
                  precond='multigrid',
                  alpha=0.3,
                  order=1):
+        if J_time is None:
+            J_time = J_space
+        mesh_space, bc, mesh_time, data, fn = problem_helper(problem,
+                                                             J_space=J_space,
+                                                             J_time=J_time)
+
         # Building fespaces X^\delta and Y^\delta
         X = KronFES(H1(mesh_time, order=order),
                     H1(mesh_space, order=order, dirichlet=bc))
         Y = KronFES(L2(mesh_time, order=order), X.space)
+        self.N = len(X.time.fd)
+        self.M = len(X.space.fd)
 
         # Building the ngsolve spacetime-bilforms.
         dt = dx
@@ -57,7 +63,6 @@ class HeatEquation:
         self.K = KronLinOp(Kinv_time, Kinv_space)
 
         # --- Wavelet transform ---
-        J_time = int(np.log(X.time.mesh.ne) / np.log(2))
         W_t = WaveletTransformOp(J_time)
         self.W = KronLinOp(W_t, sp.eye(len(X.space.fd)))
         self.WT = KronLinOp(W_t.T, sp.eye(len(X.space.fd)))
@@ -98,28 +103,56 @@ class HeatEquation:
 
 
 if __name__ == '__main__':
-    output = True
-    precond = 'direct'
+    parser = argparse.ArgumentParser(
+        description='Solve heatequation using ngsolve.')
+    parser.add_argument('--problem',
+                        default='square',
+                        help='problem type (square, ns)')
+    parser.add_argument('--J_time',
+                        type=int,
+                        default=5,
+                        help='number of time refines')
+    parser.add_argument('--J_space',
+                        type=int,
+                        default=6,
+                        help='number of space refines')
+    parser.add_argument(
+        '--precond',
+        default="multigrid",
+        help='type of ngsolve preconditioner, e.g. direct or multigrid.')
+    parser.add_argument('--alpha',
+                        type=float,
+                        default=0.3,
+                        help='Alpha value used in the preconditioner for X.')
+    args = parser.parse_args()
     order = 1  # Higher order requires a different wavelet transform.
 
-    for N in [1, 2, 3, 4, 5, 6]:
-        print("Building problem for N = {}".format(N))
-        heat_eq = HeatEquation(*square(N), precond, order)
+    print('Arguments: {}'.format(args))
+    print(
+        '\n\nCreating HeatEquation with {} time refines and {} space refines.'.
+        format(args.J_time, args.J_space))
+    heat_eq = HeatEquation(J_time=args.J_time,
+                           J_space=args.J_space,
+                           problem=args.problem,
+                           precond=args.precond,
+                           alpha=args.alpha)
+    print('Size of time mesh: {} dofs. Size of space mesh: {} dofs'.format(
+        heat_eq.N, heat_eq.M))
 
-        def cb(w, residual, k):
-            print('.', end='', flush=True)
+    def cb(w, residual, k):
+        print('.', end='', flush=True)
 
-        print("solving")
-        w, iters = PCG(heat_eq.WT @ heat_eq.S @ heat_eq.W,
-                       heat_eq.P,
-                       heat_eq.WT @ heat_eq.f,
-                       callback=cb)
-        u = heat_eq.W @ w
-        res = heat_eq.f - heat_eq.S @ heat_eq.f
-        error_alg = res @ (heat_eq.P @ res)
+    print("Solving: ", end='')
+    w, iters = PCG(heat_eq.WT @ heat_eq.S @ heat_eq.W,
+                   heat_eq.P,
+                   heat_eq.WT @ heat_eq.f,
+                   callback=cb)
+    u = heat_eq.W @ w
+    res = heat_eq.f - heat_eq.S @ heat_eq.f
+    error_alg = res @ (heat_eq.P @ res)
 
-        gminBu = heat_eq.g_vec - heat_eq.B @ u
-        error_Yprime = gminBu @ (heat_eq.K @ gminBu)
-        print(
-            "done in {}  PCG steps. X-norm algebraic error: {}. Error in Yprime: {}\n"
-            .format(iters, error_alg, error_Yprime))
+    gminBu = heat_eq.g_vec - heat_eq.B @ u
+    error_Yprime = gminBu @ (heat_eq.K @ gminBu)
+    print(
+        "Done in {}  PCG steps. X-norm algebraic error: {}. Error in Yprime: {}\n"
+        .format(iters, error_alg, error_Yprime))

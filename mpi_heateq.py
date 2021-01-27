@@ -8,10 +8,8 @@ from multigrid import MeshHierarchy, MultiGrid
 from scipy.sparse.linalg.interface import LinearOperator
 
 import psutil
-from bilform import BilForm
-from fespace import KronFES
 from linalg import PCG
-from linform import LinForm
+from ngsolve_helper import KronFES, KronBF, BilForm, LinForm
 from linop import AsLinearOperator, CompositeLinOp
 from mpi4py import MPI
 from mpi_kron import (BlockDiagMPI, CompositeMPI, MatKronIdentityMPI, SumMPI,

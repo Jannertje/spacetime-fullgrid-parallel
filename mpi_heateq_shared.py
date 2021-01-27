@@ -27,7 +27,12 @@ def mem():
 
 
 class HeatEquationMPIShared:
-    """ Creates necessary operators for solving the heatequation using MPI."""
+    """ Creates necessary operators for solving the heatequation using MPI.
+
+    The matrices are created with ngsolve. The matrices are shared 
+    among nodes scheduled on the same physical machine, in order to reduce
+    the (ngsolve) memory footprint.
+    """
     def __init__(self,
                  J_space=2,
                  J_time=None,
@@ -56,10 +61,8 @@ class HeatEquationMPIShared:
 
         if shared_comm.rank == 0:
             from ngsolve import H1, InnerProduct, Preconditioner, ds, dx, grad, ngsglobals
-            from bilform import BilForm
-            from fespace import KronFES
+            from ngsolve_helper import KronFES, KronBF, BilForm, LinForm
             from problem import problem_helper
-            from linform import LinForm
             ngsglobals.msg_level = 0
             mesh_space, bc_space, mesh_time, data, fn = problem_helper(
                 problem, J_space=J_space, J_time=J_time)
