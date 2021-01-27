@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import psutil
-from shared_mem import shared_sparse_matrix
+from mpi_shared_mem import shared_sparse_matrix
 from mpi4py import MPI
 from scipy.sparse.linalg import splu, LinearOperator
 from petsc4py import PETSc
