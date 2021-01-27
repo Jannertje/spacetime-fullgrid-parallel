@@ -70,7 +70,7 @@ def test_matrices():
     J_time = 4
     J_space = 2
     problem = 'square'
-    precond = 'multigrid'
+    precond = 'direct'
 
     heat_eq_mpi = HeatEquationMPI(J_time=J_time,
                                   J_space=J_space,
@@ -90,7 +90,7 @@ def test_matrices():
         heat_eq = HeatEquation(J_time=J_time,
                                J_space=J_space,
                                problem=problem,
-                               precond=precond)
+                               precond='direct')
         WT_S_W = as_matrix(heat_eq.WT_S_W)
         P = as_matrix(heat_eq.P)
 
@@ -146,7 +146,9 @@ def test_solve():
         heat_eq_mpi = HeatEquationMPI(J_time=J_time,
                                       J_space=J_space,
                                       problem='square',
-                                      precond=precond)
+                                      precond=precond,
+                                      smoothsteps=3,
+                                      vcycles=4)
         N = heat_eq_mpi.N
         M = heat_eq_mpi.M
         dofs_distr = DofDistributionMPI(MPI.COMM_WORLD, N, M)
@@ -165,7 +167,7 @@ def test_solve():
             heat_eq = HeatEquation(J_time=J_time,
                                    J_space=refines,
                                    problem='square',
-                                   precond=precond)
+                                   precond='direct')
 
             # Solve on root.
             u_glob_demo, _ = PCG(heat_eq.S, scipy.sparse.identity(N * M),

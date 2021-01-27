@@ -131,7 +131,7 @@ class PETScSMoother:
 
 class MultiGrid(LinearOperator):
     """ Simple multigrid implementation for uniform meshes. """
-    def __init__(self, mat, hierarchy, smoothsteps=3, vcycles=2):
+    def __init__(self, mat, hierarchy, smoothsteps=2, vcycles=1):
         self.num_applies = 0
         self.time_applies = 0
         self.hierarchy = hierarchy
