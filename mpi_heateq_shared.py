@@ -3,7 +3,7 @@ import zlib
 import pickle
 import base64
 import os
-from shared_mem import shared_numpy_array, shared_sparse_matrix
+from mpi_shared_mem import shared_numpy_array, shared_sparse_matrix
 import sys
 
 import numpy as np
