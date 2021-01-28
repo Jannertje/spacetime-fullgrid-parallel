@@ -248,8 +248,12 @@ def test_demo():
 
 
 def test_preconditioner():
-    refines = 3
-    heat_eq_mpi = HeatEquationMPI(refines, precond='direct')
+    J_time = 4
+    J_space = 2
+    precond = 'direct'
+    heat_eq_mpi = HeatEquationMPI(J_time=J_time,
+                                  J_space=J_space,
+                                  precond=precond)
     N = heat_eq_mpi.N
     M = heat_eq_mpi.M
     comm = MPI.COMM_WORLD
@@ -270,8 +274,6 @@ def test_preconditioner():
 
     if w_mpi.rank == 0:
         # Compare to demo
-        heat_eq = HeatEquation(problem='square',
-                               J_space=refines,
-                               precond='direct')
-        lanczos_demo = Lanczos(heat_eq.WT @ heat_eq.S @ heat_eq.W, heat_eq.P)
-        assert abs(lanczos_mpi.cond() - lanczos_demo.cond()) < 0.4
+        heat_eq = HeatEquation(J_time=J_time, J_space=J_space, precond=precond)
+        lanczos_demo = Lanczos(heat_eq.WT_S_W, heat_eq.P)
+        assert abs(lanczos_mpi.cond() - lanczos_demo.cond()) < 0.1
