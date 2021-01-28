@@ -1,9 +1,8 @@
 import numpy as np
-import traceback
 import scipy.sparse
-
 from mpi4py import MPI
-from mpi_vector import KronVectorMPI
+
+from .mpi_vector import KronVectorMPI
 
 
 def as_matrix(operator):
@@ -33,7 +32,8 @@ class LinearOperatorMPI:
 
     def time_per_apply(self):
         assert (self.time_applies)
-        return self.time_applies / self.num_applies, self.time_communication / self.num_applies
+        return (self.time_applies / self.num_applies,
+                self.time_communication / self.num_applies)
 
     def as_global_matrix(self):
         print('Expensive computation!')
@@ -71,7 +71,6 @@ class IdentityMPI(LinearOperatorMPI):
 class SumMPI(LinearOperatorMPI):
     def __init__(self, dofs_distr, linops):
         assert all(isinstance(linop, LinearOperatorMPI) for linop in linops)
-        N, M = linops[0].N, linops[0].M
         self.linops = linops
         super().__init__(dofs_distr)
 
@@ -102,7 +101,6 @@ class CompositeMPI(LinearOperatorMPI):
     def _matvec(self, vec_in, vec_out):
         assert (vec_in is not vec_out)
         self.time_communication = 0
-        vec_tmp = KronVectorMPI(self.dofs_distr)
         Y = vec_in
         for linop in reversed(self.linops):
             Y = linop @ Y
@@ -115,7 +113,6 @@ class CompositeMPI(LinearOperatorMPI):
 class BlockDiagMPI(LinearOperatorMPI):
     """ Time-parallel application of a time block-diag operator. """
     def __init__(self, dofs_distr, matrices_space):
-        N = len(matrices_space)
         M = matrices_space[0].shape[0]
         for mat in matrices_space:
             assert mat.shape == (M, M)
@@ -159,7 +156,6 @@ class TridiagKronIdentityMPI(LinearOperatorMPI):
     def __init__(self, dofs_distr, mat_time):
         assert (scipy.sparse.isspmatrix_csr(mat_time))
         N, K = mat_time.shape
-        M = dofs_distr.M
         assert (N == K)
         # Check that it is indeed bandwidthed
         for t, row in enumerate(mat_time):
@@ -209,8 +205,6 @@ class TridiagKronMatMPI(LinearOperatorMPI):
     """ Time-parallel implementation of the operator: T_t kron M_x, for some
         tridiagonal matrix T_t in time and general matrix M_x in space. """
     def __init__(self, dofs_distr, mat_time, mat_space):
-        N = mat_time.shape[0]
-        M = mat_space.shape[0]
         super().__init__(dofs_distr)
         self.mat_time = mat_time
         self.mat_space = mat_space
@@ -220,7 +214,8 @@ class TridiagKronMatMPI(LinearOperatorMPI):
     def _matvec(self, vec_in, vec_out):
         self.T_I._matvec(vec_in, vec_out)
         self.I_M._matvec(vec_out, vec_out)
-        self.time_communication = self.I_M.time_communication + self.T_I.time_communication
+        self.time_communication = (self.I_M.time_communication +
+                                   self.T_I.time_communication)
         return vec_out
 
     def as_matrix(self):
@@ -236,7 +231,6 @@ class MatKronIdentityMPI(LinearOperatorMPI):
     """
     def __init__(self, dofs_distr, mat_time):
         N, K = mat_time.shape
-        M = dofs_distr.N
         assert (N == K)
         self.mat_time = mat_time
         if hasattr(mat_time, 'levels'):
@@ -264,7 +258,7 @@ class MatKronIdentityMPI(LinearOperatorMPI):
 
 class SparseKronIdentityMPI(LinearOperatorMPI):
     """ Time-parallel implementation of the operator: M_t kron I_x
-    
+
     This requires M_t to be some square matrix in CSR format with a symmetric
     sparsity pattern. It has to communicate the rows that are not available.
     """
@@ -272,7 +266,6 @@ class SparseKronIdentityMPI(LinearOperatorMPI):
         super().__init__(dofs_distr)
         assert scipy.sparse.isspmatrix_csr(mat_time)
         N, K = mat_time.shape
-        M = dofs_distr.N
         assert (N == K)
         assert (mat_time.nnz)
         self.add_identity = add_identity

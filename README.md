@@ -7,23 +7,22 @@ and time, MPI through mpi4py for distributed computations, and SciPy for the
 sparse matrix-vector computations.
 
 ## Requirements
-- SciPy, version >= 1.4.0.
-- NGsolve, follow the NGSolve install instructions from https://ngsolve.org/docu/latest/install/install_sources.html.
-- mpi4py.
+- NGsolve (tested with v6.2.2): [see install instructions](https://ngsolve.org/downloads).
+- Python pacakges (requirements.txt): mpi4py, numpy, pets4py, psutil, scipy.
 
-## Instructions
-A normal, single-threaded, implementation is given in demo.py.
+## Run instructions
+A normal, single-threaded, implementation is given in heateq.py.
 ```bash
-python3 demo.py --J_time=3 --J_space=6 --problem=square
+python3 heateq.py --J_time=3 --J_space=6 --problem=square
 ```
 
-The results in the paper are gathered using the parallel implementation
-given in mpi_heateq.py. Similar arguments hold, e.g.
+The parallel MPI implementation, used for the numerical results in the paper,
+is given in heateq_mpi.py.
 ```bash
-mpirun -np 2 python3 mpi_heateq.py --J_time=3 --J_space=6 --problem=square
+mpirun -np 2 python3 heateq_mpi.py --J_time=3 --J_space=6 --problem=square
 ```
 
-The tests can be run using pytest, e.g.
+The tests can be run using pytest.
 ```bash
 pytest
 mpirun -np 2 pytest

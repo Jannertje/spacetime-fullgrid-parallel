@@ -1,11 +1,9 @@
 import numpy as np
-from mpi_vector import KronVectorMPI
-from mpi4py import MPI
 import scipy.sparse as sp
-import scipy.sparse.linalg
-from scipy import sparse as sp
+from mpi4py import MPI
 
-from mpi_kron import CompositeMPI, SparseKronIdentityMPI, as_matrix
+from .mpi_kron import CompositeMPI, SparseKronIdentityMPI
+from .mpi_vector import KronVectorMPI
 
 
 def WaveletTransformMat(J):
@@ -14,7 +12,7 @@ def WaveletTransformMat(J):
     The wavelet indices are ordered level-by-level, i.e., for d_k the wavelet
     coordinates on level k, the input vector is ordered as[d_0, d_1, ..., d_J].
 
-    NOTE: This is a debug function; the resulting matrix is not uniformly 
+    NOTE: This is a debug function; the resulting matrix is not uniformly
           sparse, and therefore cannot be applied in linear complexity.
     """
     def p(j):
@@ -47,14 +45,14 @@ def WaveletTransformMat(J):
 class WaveletTransformOp(sp.linalg.LinearOperator):
     """ A matrix-free transformation from 3-pt wavelet to hat function basis.
 
-    By iterating over the levels, this applies the `splitting' 
-    operation [p(j), q(j)] in-place in linear complexity.  In view 
+    By iterating over the levels, this applies the `splitting'
+    operation [p(j), q(j)] in-place in linear complexity.  In view
     of parallelism, this implements the Wavelet transform using two
-    different indexing strategies. 
+    different indexing strategies.
 
     For interleaved=false, the `canonical' level-by-level indexing is used,
     i.e., the wavelet vector is ordered as[d_0, d_1, ..., d_J].
-    
+
     For interleaved=true, the 3-pt wavelets are numbered according
     to the associated nodes on the mesh of level J. For example, if J=2,
     then the wavelets are ordered as [lvl_0, lvl_2, lvl_1, lvl_2, lvl_0].
@@ -140,10 +138,10 @@ class WaveletTransformOp(sp.linalg.LinearOperator):
 
         This helper function is used to return the matrix [p(j) q(j)]
         when interleaved=true, as this corresponds to a matrix with rows/columns
-        of p(j) and q(j) interleaved. 
+        of p(j) and q(j) interleaved.
 
         NOTE: In order to achieve a linear complexity algorithm, this matrix
-              should be applied in-place (or combined with an additional 
+              should be applied in-place (or combined with an additional
               identity matrix to copy the input vector).
         """
         J = self.J

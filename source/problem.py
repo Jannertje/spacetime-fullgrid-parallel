@@ -1,5 +1,7 @@
 import numpy as np
-from mesh import *
+
+from .mesh import (construct_2d_square_mesh, construct_3d_cube_mesh,
+                   construct_interval)
 
 
 def square(J_space, J_time=None):

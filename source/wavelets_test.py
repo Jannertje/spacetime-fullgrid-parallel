@@ -1,14 +1,14 @@
 from math import sqrt
-import scipy
 
 import numpy as np
-
-from mpi_vector import KronVectorMPI, DofDistributionMPI
+import scipy
 from mpi4py import MPI
-from mpi_kron import as_matrix
-from wavelets import (TransposedWaveletTransformKronIdentityMPI,
-                      WaveletTransformKronIdentityMPI, WaveletTransformMat,
-                      WaveletTransformOp)
+
+from .mpi_kron import as_matrix
+from .mpi_vector import DofDistributionMPI
+from .wavelets import (TransposedWaveletTransformKronIdentityMPI,
+                       WaveletTransformKronIdentityMPI, WaveletTransformMat,
+                       WaveletTransformOp)
 
 
 def test_mat_equals_matfree():

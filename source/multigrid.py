@@ -1,16 +1,14 @@
 import numpy as np
-import os
-import psutil
-from mpi_shared_mem import shared_sparse_matrix
-from mpi4py import MPI
-from scipy.sparse.linalg import splu, LinearOperator
-from petsc4py import PETSc
 import scipy.sparse
+from mpi4py import MPI
+from petsc4py import PETSc
 from scipy.sparse import csr_matrix
+from scipy.sparse.linalg import LinearOperator, splu
 
-from lanczos import Lanczos
-from linop import AsLinearOperator
-from mpi_kron import as_matrix
+if __name__ == "__main__":
+    from source.mpi_shared_mem import shared_sparse_matrix
+else:
+    from .mpi_shared_mem import shared_sparse_matrix
 
 
 class MeshHierarchy:
@@ -56,7 +54,7 @@ class MeshHierarchy:
                 col[nc:] = parents[nc:nf].reshape(-1)
                 val[nc:] = 0.5
 
-                # Now filter out all the vertices that do not correspond to dofs.
+                # Filter out all the vertices that do not correspond to dofs.
                 P_mats.append(I[fdofs[:nf], :nf] @ csr_matrix(
                     (val, (row, col)), shape=(nf, nc)) @ I[:nc, fdofs[:nc]])
                 R_mats = [P.T.tocsr() for P in P_mats]
@@ -200,12 +198,13 @@ class MultiGrid(LinearOperator):
 
 
 if __name__ == "__main__":
+    from source.lanczos import Lanczos
     shared_comm = MPI.COMM_WORLD.Split_type(MPI.COMM_TYPE_SHARED)
     if shared_comm.rank == 0:
-        from ngsolve import (H1, BaseMatrix, BilinearForm, InnerProduct,
-                             Preconditioner, TaskManager, ds, dx, grad,
-                             ngsglobals)
-        from mesh import construct_2d_square_mesh
+        from ngsolve import H1, InnerProduct, dx, grad
+
+        from source.mesh import construct_2d_square_mesh
+        from source.ngsolve_helper import BilForm
         mesh, bc = construct_2d_square_mesh(9)
         fes = H1(mesh, order=1, dirichlet=bc)
         A_bf = BilForm(
