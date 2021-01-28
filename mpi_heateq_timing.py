@@ -6,7 +6,7 @@ import os
 import pickle
 import base64
 
-from mpi_heateq_shared import HeatEquationMPIShared, mem
+from mpi_heateq import HeatEquationMPI, mem
 import numpy as np
 
 if __name__ == "__main__":
@@ -51,13 +51,13 @@ if __name__ == "__main__":
         print('Too many MPI processors!')
         sys.exit('1')
 
-    heat_eq_mpi = HeatEquationMPIShared(J_space=J_space,
-                                        J_time=J_time,
-                                        problem=args.problem,
-                                        smoothsteps=args.smoothsteps,
-                                        vcycles=args.vcycles,
-                                        alpha=args.alpha,
-                                        wavelettransform=args.wavelettransform)
+    heat_eq_mpi = HeatEquationMPI(J_space=J_space,
+                                  J_time=J_time,
+                                  problem=args.problem,
+                                  smoothsteps=args.smoothsteps,
+                                  vcycles=args.vcycles,
+                                  alpha=args.alpha,
+                                  wavelettransform=args.wavelettransform)
     if rank == 0:
         data['args'] = vars(args)
         data['N'] = heat_eq_mpi.N

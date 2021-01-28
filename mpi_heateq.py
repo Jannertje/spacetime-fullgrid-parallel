@@ -247,13 +247,13 @@ if __name__ == "__main__":
         print('MPI tasks: {} '.format(size))
         print('Arguments: {}'.format(args))
 
-    heat_eq_mpi = HeatEquationMPIShared(J_space=J_space,
-                                        J_time=J_time,
-                                        problem=args.problem,
-                                        smoothsteps=args.smoothsteps,
-                                        vcycles=args.vcycles,
-                                        alpha=args.alpha,
-                                        wavelettransform=args.wavelettransform)
+    heat_eq_mpi = HeatEquationMPI(J_space=J_space,
+                                  J_time=J_time,
+                                  problem=args.problem,
+                                  smoothsteps=args.smoothsteps,
+                                  vcycles=args.vcycles,
+                                  alpha=args.alpha,
+                                  wavelettransform=args.wavelettransform)
 
     if rank == 0:
         data['args'] = vars(args)
