@@ -1,3 +1,4 @@
+# Port from C code written by R.P. Stevenson.
 import time
 from math import sqrt
 
@@ -6,6 +7,11 @@ import scipy.sparse as sp
 
 
 class Lanczos:
+    """ Implementation of the lanczos algorithm for calculating cond numbers.
+
+    This finds the smallest and largest eigenvalue of a spd matrix.
+    """
+
     # Class parameters
     MAXLANCZOS = 2000
     TOLBISEC = 0.000001
