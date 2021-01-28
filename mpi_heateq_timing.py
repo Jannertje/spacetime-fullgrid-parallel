@@ -11,7 +11,8 @@ import numpy as np
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description='Solve heatequation using MPI.')
+        description=
+        'Time several components of the heatequation solver seperately.')
     parser.add_argument('--problem',
                         default='square',
                         help='problem type (square, ns)')
