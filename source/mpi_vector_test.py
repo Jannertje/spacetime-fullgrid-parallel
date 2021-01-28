@@ -2,7 +2,8 @@ import sys
 
 import numpy as np
 from mpi4py import MPI
-from mpi_vector import DofDistributionMPI, KronVectorMPI
+
+from .mpi_vector import DofDistributionMPI, KronVectorMPI
 
 
 def test_dot():

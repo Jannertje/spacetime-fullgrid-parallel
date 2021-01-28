@@ -12,15 +12,15 @@ sparse matrix-vector computations.
 - mpi4py.
 
 ## Instructions
-A normal, single-threaded, implementation is given in demo.py.
+A normal, single-threaded, implementation is given in heateq.py.
 ```bash
-python3 demo.py --J_time=3 --J_space=6 --problem=square
+python3 heateq.py --J_time=3 --J_space=6 --problem=square
 ```
 
 The results in the paper are gathered using the parallel implementation
-given in mpi_heateq.py. Similar arguments hold, e.g.
+given in heateq_mpi.py. Similar arguments hold, e.g.
 ```bash
-mpirun -np 2 python3 mpi_heateq.py --J_time=3 --J_space=6 --problem=square
+mpirun -np 2 python3 heateq_mpi.py --J_time=3 --J_space=6 --problem=square
 ```
 
 The tests can be run using pytest, e.g.

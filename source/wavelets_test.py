@@ -3,11 +3,12 @@ from math import sqrt
 import numpy as np
 import scipy
 from mpi4py import MPI
-from mpi_kron import as_matrix
-from mpi_vector import DofDistributionMPI, KronVectorMPI
-from wavelets import (TransposedWaveletTransformKronIdentityMPI,
-                      WaveletTransformKronIdentityMPI, WaveletTransformMat,
-                      WaveletTransformOp)
+
+from .mpi_kron import as_matrix
+from .mpi_vector import DofDistributionMPI, KronVectorMPI
+from .wavelets import (TransposedWaveletTransformKronIdentityMPI,
+                       WaveletTransformKronIdentityMPI, WaveletTransformMat,
+                       WaveletTransformOp)
 
 
 def test_mat_equals_matfree():

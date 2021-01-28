@@ -1,16 +1,18 @@
 import numpy as np
 import scipy.sparse
-from demo import HeatEquation
-from lanczos import Lanczos
-from linalg import PCG
-from linop import AsLinearOperator, CompositeLinOp
 from mpi4py import MPI
-from mpi_heateq import HeatEquationMPI
-from mpi_kron import (BlockDiagMPI, CompositeMPI, IdentityMPI,
-                      MatKronIdentityMPI, SumMPI, TridiagKronMatMPI, as_matrix)
-from mpi_kron_test import linearity_test_MPI, linop_test_MPI
-from mpi_vector import DofDistributionMPI, KronVectorMPI
-from problem import problem_helper, square
+
+from heateq import HeatEquation
+from heateq_mpi import HeatEquationMPI
+from source.lanczos import Lanczos
+from source.linalg import PCG
+from source.linop import AsLinearOperator, CompositeLinOp
+from source.mpi_kron import (BlockDiagMPI, CompositeMPI, IdentityMPI,
+                             MatKronIdentityMPI, SumMPI, TridiagKronMatMPI,
+                             as_matrix)
+from source.mpi_kron_test import linearity_test_MPI, linop_test_MPI
+from source.mpi_vector import DofDistributionMPI, KronVectorMPI
+from source.problem import problem_helper, square
 
 refines = 2
 

@@ -1,17 +1,18 @@
 import numpy as np
-from lanczos import Lanczos
-from linop import AsLinearOperator
-from mesh import construct_2d_square_mesh, construct_3d_cube_mesh
 from mpi4py import MPI
-from mpi_kron import as_matrix
-from multigrid import MeshHierarchy, MultiGrid, PETScSMoother, Smoother
 from netgen.csg import unit_cube
 from netgen.geom2d import unit_square
 from ngsolve import (H1, BaseMatrix, BilinearForm, InnerProduct,
                      Preconditioner, TaskManager, ds, dx, grad, ngsglobals)
 from ngsolve.la import EigenValues_Preconditioner
-from ngsolve_helper import BilForm
 from scipy.sparse import csr_matrix
+
+from .lanczos import Lanczos
+from .linop import AsLinearOperator
+from .mesh import construct_2d_square_mesh, construct_3d_cube_mesh
+from .mpi_kron import as_matrix
+from .multigrid import MeshHierarchy, MultiGrid, PETScSMoother, Smoother
+from .ngsolve_helper import BilForm
 
 ngsglobals.msg_level = 0
 

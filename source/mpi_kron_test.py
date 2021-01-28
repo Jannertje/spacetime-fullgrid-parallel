@@ -1,11 +1,12 @@
 import numpy as np
 import scipy.sparse
 from mpi4py import MPI
-from mpi_kron import (BlockDiagMPI, CompositeMPI, IdentityKronMatMPI,
-                      LinearOperatorMPI, MatKronIdentityMPI,
-                      SparseKronIdentityMPI, SumMPI, TridiagKronIdentityMPI,
-                      TridiagKronMatMPI, as_matrix)
-from mpi_vector import DofDistributionMPI, KronVectorMPI
+
+from .mpi_kron import (BlockDiagMPI, CompositeMPI, IdentityKronMatMPI,
+                       LinearOperatorMPI, MatKronIdentityMPI,
+                       SparseKronIdentityMPI, SumMPI, TridiagKronIdentityMPI,
+                       TridiagKronMatMPI, as_matrix)
+from .mpi_vector import DofDistributionMPI, KronVectorMPI
 
 
 def linearity_test_MPI(linop):
