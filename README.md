@@ -18,12 +18,11 @@ python3 heateq.py --J_time=3 --J_space=6 --problem=square
 
 The parallel MPI implementation, used for the numerical results in the paper,
 is given in heateq_mpi.py.
-Similar arguments hold, e.g.
 ```bash
 mpirun -np 2 python3 heateq_mpi.py --J_time=3 --J_space=6 --problem=square
 ```
 
-The tests can be run using pytest, e.g.
+The tests can be run using pytest.
 ```bash
 pytest
 mpirun -np 2 pytest
