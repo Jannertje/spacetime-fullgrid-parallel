@@ -1,4 +1,6 @@
 # A parallel algorithm for solving linear parabolic equations
+[![DOI](https://zenodo.org/badge/284029108.svg)](https://zenodo.org/badge/latestdoi/284029108)
+
 This repository supplements arXiv:2009.08875.
 
 We implemented our algorithm in Python3 using the open source finite element
