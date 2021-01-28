@@ -1,5 +1,5 @@
 import numpy as np
-from mpi_vector import KronVectorMPI
+from .mpi_vector import KronVectorMPI
 
 
 def PCG(T, P, b, w0=None, kmax=100000, eps=1e-6, callback=None):

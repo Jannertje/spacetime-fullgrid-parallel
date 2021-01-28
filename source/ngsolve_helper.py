@@ -1,8 +1,9 @@
 import numpy as np
 import scipy.sparse as sp
-from linop import AsLinearOperator, BlockDiagLinOp, CompositeLinOp, KronLinOp
 from ngsolve import BilinearForm, LinearForm, Preconditioner, dx, grad
-from wavelets import WaveletTransformMat
+
+from .linop import AsLinearOperator, BlockDiagLinOp, CompositeLinOp, KronLinOp
+from .wavelets import WaveletTransformMat
 
 
 class KronFES:

@@ -4,14 +4,16 @@ import time
 import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg
-from linalg import PCG
-from linop import AsLinearOperator, BlockDiagLinOp, CompositeLinOp, KronLinOp
-from mpi_kron import as_matrix
 from ngsolve import (H1, L2, InnerProduct, Preconditioner, ds, dx, grad,
                      ngsglobals)
-from ngsolve_helper import BilForm, KronBF, KronFES, KronLF, LinForm
-from problem import problem_helper
-from wavelets import WaveletTransformOp
+
+from source.linalg import PCG
+from source.linop import (AsLinearOperator, BlockDiagLinOp, CompositeLinOp,
+                          KronLinOp)
+from source.mpi_kron import as_matrix
+from source.ngsolve_helper import BilForm, KronBF, KronFES, KronLF, LinForm
+from source.problem import problem_helper
+from source.wavelets import WaveletTransformOp
 
 ngsglobals.msg_level = 0
 

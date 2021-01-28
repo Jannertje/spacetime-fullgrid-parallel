@@ -1,5 +1,6 @@
 import numpy as np
-from mesh import *
+
+from .mesh import *
 
 
 def square(J_space, J_time=None):

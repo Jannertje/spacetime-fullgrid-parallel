@@ -3,7 +3,8 @@ import traceback
 import numpy as np
 import scipy.sparse
 from mpi4py import MPI
-from mpi_vector import KronVectorMPI
+
+from .mpi_vector import KronVectorMPI
 
 
 def as_matrix(operator):

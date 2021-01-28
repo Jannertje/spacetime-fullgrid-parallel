@@ -7,17 +7,19 @@ import zlib
 
 import numpy as np
 import psutil
-from linalg import PCG
-from linop import AsLinearOperator, CompositeLinOp, InvLinOp
 from mpi4py import MPI
-from mpi_kron import (BlockDiagMPI, CompositeMPI, MatKronIdentityMPI, SumMPI,
-                      TridiagKronMatMPI)
-from mpi_shared_mem import shared_numpy_array, shared_sparse_matrix
-from mpi_vector import DofDistributionMPI, KronVectorMPI
-from multigrid import MeshHierarchy, MultiGrid
 from scipy.sparse.linalg.interface import LinearOperator
-from wavelets import (TransposedWaveletTransformKronIdentityMPI,
-                      WaveletTransformKronIdentityMPI, WaveletTransformOp)
+
+from source.linalg import PCG
+from source.linop import AsLinearOperator, CompositeLinOp, InvLinOp
+from source.mpi_kron import (BlockDiagMPI, CompositeMPI, MatKronIdentityMPI,
+                             SumMPI, TridiagKronMatMPI)
+from source.mpi_shared_mem import shared_numpy_array, shared_sparse_matrix
+from source.mpi_vector import DofDistributionMPI, KronVectorMPI
+from source.multigrid import MeshHierarchy, MultiGrid
+from source.wavelets import (TransposedWaveletTransformKronIdentityMPI,
+                             WaveletTransformKronIdentityMPI,
+                             WaveletTransformOp)
 
 
 def mem():
@@ -62,8 +64,9 @@ class HeatEquationMPI:
         if shared_comm.rank == 0:
             from ngsolve import (H1, InnerProduct, Preconditioner, ds, dx,
                                  grad, ngsglobals)
-            from ngsolve_helper import BilForm, KronBF, KronFES, LinForm
-            from problem import problem_helper
+
+            from source.ngsolve_helper import BilForm, KronBF, KronFES, LinForm
+            from source.problem import problem_helper
             ngsglobals.msg_level = 0
             mesh_space, bc_space, mesh_time, data, fn = problem_helper(
                 problem, J_space=J_space, J_time=J_time)
