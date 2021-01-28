@@ -1,4 +1,4 @@
-# A scalable algorithm for solving linear parabolic equations
+# A parallel algorithm for solving linear parabolic equations
 This repository supplements arXiv:2009.08875.
 
 We implemented our algorithm in Python3 using the open source finite element
