@@ -18,9 +18,9 @@ python3 demo.py --J_time=3 --J_space=6 --problem=square
 ```
 
 The results in the paper are gathered using the parallel implementation
-given in mpi_heateq_shared.py. Similar arguments hold, e.g.
+given in mpi_heateq.py. Similar arguments hold, e.g.
 ```bash
-mpirun -np 2 python3 mpi_heateq_shared.py --J_time=3 --J_space=6 --problem=square
+mpirun -np 2 python3 mpi_heateq.py --J_time=3 --J_space=6 --problem=square
 ```
 
 The tests can be run using pytest, e.g.

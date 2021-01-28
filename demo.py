@@ -88,6 +88,7 @@ class HeatEquation:
         self.S = sp.linalg.LinearOperator(
             self.G.shape,
             matvec=lambda v: self.BT @ self.K @ self.B @ v + self.G @ v)
+        self.WT_S_W = self.WT @ self.S @ self.W
 
         # Calculate rhs.
         self.g_vec = np.zeros(self.K.shape[0])
@@ -143,7 +144,7 @@ if __name__ == '__main__':
         print('.', end='', flush=True)
 
     print("Solving: ", end='')
-    w, iters = PCG(heat_eq.WT @ heat_eq.S @ heat_eq.W,
+    w, iters = PCG(heat_eq.WT_S_W,
                    heat_eq.P,
                    heat_eq.WT @ heat_eq.f,
                    callback=cb)
