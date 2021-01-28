@@ -8,10 +8,9 @@ import zlib
 import numpy as np
 import psutil
 from mpi4py import MPI
-from scipy.sparse.linalg.interface import LinearOperator
 
 from source.linalg import PCG
-from source.linop import AsLinearOperator, CompositeLinOp, InvLinOp
+from source.linop import CompositeLinOp, InvLinOp
 from source.mpi_kron import (BlockDiagMPI, CompositeMPI, MatKronIdentityMPI,
                              SumMPI, TridiagKronMatMPI)
 from source.mpi_shared_mem import shared_numpy_array, shared_sparse_matrix
@@ -30,7 +29,7 @@ def mem():
 class HeatEquationMPI:
     """ Creates necessary operators for solving the heatequation using MPI.
 
-    The matrices are created with ngsolve. The matrices are shared 
+    The matrices are created with ngsolve. The matrices are shared
     among nodes scheduled on the same physical machine, in order to reduce
     the (ngsolve) memory footprint.
     """
@@ -62,10 +61,9 @@ class HeatEquationMPI:
         fes_x = None
 
         if shared_comm.rank == 0:
-            from ngsolve import (H1, InnerProduct, Preconditioner, ds, dx,
-                                 grad, ngsglobals)
+            from ngsolve import H1, InnerProduct, ds, dx, grad, ngsglobals
 
-            from source.ngsolve_helper import BilForm, KronBF, KronFES, LinForm
+            from source.ngsolve_helper import BilForm, KronFES, LinForm
             from source.problem import problem_helper
             ngsglobals.msg_level = 0
             mesh_space, bc_space, mesh_time, data, fn = problem_helper(
@@ -201,7 +199,7 @@ class HeatEquationMPI:
         print('WT: {:.5f}\t{:.5f}'.format(*self.WT.time_per_apply()))
         print('P:  {:.5f}\t{:.5f}'.format(*self.P.time_per_apply()))
         print('')
-        #print('WTSW: {:.5f}\t{:.5f}'.format(*self.WT_S_W.time_per_apply()))
+        # print('WTSW: {:.5f}\t{:.5f}'.format(*self.WT_S_W.time_per_apply()))
 
 
 if __name__ == "__main__":

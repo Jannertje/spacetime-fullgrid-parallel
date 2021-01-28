@@ -1,18 +1,18 @@
 import argparse
 import base64
-import os
 import pickle
+import sys
 import zlib
 
 import numpy as np
 from mpi4py import MPI
-from mpi_heateq import HeatEquationMPI, mem
-from mpi_vector import KronVectorMPI
+
+from heateq_mpi import HeatEquationMPI, mem
+from source.mpi_vector import KronVectorMPI
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description=
-        'Time several components of the heatequation solver seperately.')
+        description="Time several components of parallel heatequation.")
     parser.add_argument('--problem',
                         default='square',
                         help='problem type (square, ns)')

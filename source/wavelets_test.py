@@ -5,7 +5,7 @@ import scipy
 from mpi4py import MPI
 
 from .mpi_kron import as_matrix
-from .mpi_vector import DofDistributionMPI, KronVectorMPI
+from .mpi_vector import DofDistributionMPI
 from .wavelets import (TransposedWaveletTransformKronIdentityMPI,
                        WaveletTransformKronIdentityMPI, WaveletTransformMat,
                        WaveletTransformOp)

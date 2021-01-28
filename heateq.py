@@ -1,17 +1,14 @@
 import argparse
-import time
 
 import numpy as np
 import scipy.sparse as sp
-import scipy.sparse.linalg
 from ngsolve import (H1, L2, InnerProduct, Preconditioner, ds, dx, grad,
                      ngsglobals)
 
 from source.linalg import PCG
 from source.linop import (AsLinearOperator, BlockDiagLinOp, CompositeLinOp,
                           KronLinOp)
-from source.mpi_kron import as_matrix
-from source.ngsolve_helper import BilForm, KronBF, KronFES, KronLF, LinForm
+from source.ngsolve_helper import BilForm, KronBF, KronFES, KronLF
 from source.problem import problem_helper
 from source.wavelets import WaveletTransformOp
 
@@ -156,6 +153,6 @@ if __name__ == '__main__':
 
     gminBu = heat_eq.g_vec - heat_eq.B @ u
     error_Yprime = gminBu @ (heat_eq.K @ gminBu)
-    print(
-        "Done in {}  PCG steps. X-norm algebraic error: {}. Error in Yprime: {}\n"
-        .format(iters, error_alg, error_Yprime))
+    print("Done in {}  PCG steps. "
+          "X-norm algebraic error: {}. "
+          "Error in Yprime: {}\n".format(iters, error_alg, error_Yprime))

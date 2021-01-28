@@ -24,13 +24,13 @@ def shared_numpy_array(array, shared_comm, dtype=np.float64):
     if shared_comm.rank == 0:
         shared_array[:] = array
     win.Fence()
-    #shared_array.setflags(write=False)
+    # shared_array.setflags(write=False)
     return shared_array
 
 
 def shared_sparse_matrix(mat, shared_comm):
     """ Allocate a sparse matrix on MPI machine.
-    
+
     Other MPI nodes scheduled on the same machine share the same data.
     """
     data, indices, indptr = None, None, None

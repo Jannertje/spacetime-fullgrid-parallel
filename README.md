@@ -7,9 +7,8 @@ and time, MPI through mpi4py for distributed computations, and SciPy for the
 sparse matrix-vector computations.
 
 ## Requirements
-- SciPy, version >= 1.4.0.
 - NGsolve, follow the NGSolve install instructions from https://ngsolve.org/docu/latest/install/install_sources.html.
-- mpi4py.
+- Python pacakges, see requirement.txt: mpi4py, numpy, pets4py, psutil, scipy.
 
 ## Instructions
 A normal, single-threaded, implementation is given in heateq.py.

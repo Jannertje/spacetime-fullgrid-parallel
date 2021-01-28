@@ -5,7 +5,7 @@ from mpi4py import MPI
 from .mpi_kron import (BlockDiagMPI, CompositeMPI, IdentityKronMatMPI,
                        LinearOperatorMPI, MatKronIdentityMPI,
                        SparseKronIdentityMPI, SumMPI, TridiagKronIdentityMPI,
-                       TridiagKronMatMPI, as_matrix)
+                       TridiagKronMatMPI)
 from .mpi_vector import DofDistributionMPI, KronVectorMPI
 
 

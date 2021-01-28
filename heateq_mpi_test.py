@@ -6,13 +6,10 @@ from heateq import HeatEquation
 from heateq_mpi import HeatEquationMPI
 from source.lanczos import Lanczos
 from source.linalg import PCG
-from source.linop import AsLinearOperator, CompositeLinOp
-from source.mpi_kron import (BlockDiagMPI, CompositeMPI, IdentityMPI,
-                             MatKronIdentityMPI, SumMPI, TridiagKronMatMPI,
-                             as_matrix)
+from source.linop import CompositeLinOp
+from source.mpi_kron import IdentityMPI, as_matrix
 from source.mpi_kron_test import linearity_test_MPI, linop_test_MPI
 from source.mpi_vector import DofDistributionMPI, KronVectorMPI
-from source.problem import problem_helper, square
 
 refines = 2
 
@@ -78,8 +75,6 @@ def test_matrices():
                                   problem=problem,
                                   wavelettransform='original',
                                   precond=precond)
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
 
     # Gather the (dense) S matrix MPI matrix, expensive.
     WT_S_W_mpi = heat_eq_mpi.WT_S_W.as_global_matrix()
@@ -257,7 +252,6 @@ def test_preconditioner():
                                   precond=precond)
     N = heat_eq_mpi.N
     M = heat_eq_mpi.M
-    comm = MPI.COMM_WORLD
 
     # Create random MPI vector.
     dofs_distr = DofDistributionMPI(MPI.COMM_WORLD, N, M)

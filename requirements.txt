@@ -1,0 +1,5 @@
+mpi4py
+numpy
+petsc4py
+psutil
+scipy >= 1.4.0
