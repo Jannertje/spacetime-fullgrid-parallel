@@ -203,11 +203,10 @@ class MultiGrid(LinearOperator):
 if __name__ == "__main__":
     shared_comm = MPI.COMM_WORLD.Split_type(MPI.COMM_TYPE_SHARED)
     if shared_comm.rank == 0:
+        from mesh import construct_2d_square_mesh
         from ngsolve import (H1, BaseMatrix, BilinearForm, InnerProduct,
                              Preconditioner, TaskManager, ds, dx, grad,
                              ngsglobals)
-
-        from mesh import construct_2d_square_mesh
         mesh, bc = construct_2d_square_mesh(9)
         fes = H1(mesh, order=1, dirichlet=bc)
         A_bf = BilForm(
