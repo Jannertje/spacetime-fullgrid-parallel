@@ -27,3 +27,6 @@ The tests can be run using pytest.
 pytest
 mpirun -np 2 pytest
 ```
+
+## License
+This project is licensed under the terms of the [MIT license](LICENSE.md).
