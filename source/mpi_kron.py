@@ -1,7 +1,7 @@
-import numpy as np
 import traceback
-import scipy.sparse
 
+import numpy as np
+import scipy.sparse
 from mpi4py import MPI
 from mpi_vector import KronVectorMPI
 

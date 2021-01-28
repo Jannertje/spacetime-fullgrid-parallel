@@ -1,11 +1,10 @@
 import numpy as np
-from mpi_vector import KronVectorMPI
-from mpi4py import MPI
 import scipy.sparse as sp
 import scipy.sparse.linalg
-from scipy import sparse as sp
-
+from mpi4py import MPI
 from mpi_kron import CompositeMPI, SparseKronIdentityMPI, as_matrix
+from mpi_vector import KronVectorMPI
+from scipy import sparse as sp
 
 
 def WaveletTransformMat(J):

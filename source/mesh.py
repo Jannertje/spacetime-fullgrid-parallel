@@ -2,8 +2,9 @@ from ngsolve import Mesh
 
 
 def construct_interval(N=16, T=1):
-    from netgen.meshing import Mesh as NGMesh, Element0D, Element1D, \
-            MeshPoint, Pnt
+    from netgen.meshing import Element0D, Element1D
+    from netgen.meshing import Mesh as NGMesh
+    from netgen.meshing import MeshPoint, Pnt
     ngmesh = NGMesh(dim=1)
     pids = []
     for i in range(N + 1):
@@ -30,7 +31,7 @@ def construct_2d_square_mesh(nrefines=1):
 
 
 def construct_3d_cube_mesh(nrefines=1):
-    from netgen.csg import OrthoBrick, Pnt, CSGeometry
+    from netgen.csg import CSGeometry, OrthoBrick, Pnt
     cube = OrthoBrick(Pnt(0, 0, 0), Pnt(1, 1, 1))
     geo = CSGeometry()
     geo.Add(cube, maxh=1)

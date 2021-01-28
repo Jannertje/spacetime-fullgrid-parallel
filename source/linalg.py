@@ -1,5 +1,4 @@
 import numpy as np
-
 from mpi_vector import KronVectorMPI
 
 

@@ -1,13 +1,13 @@
 import argparse
-from mpi4py import MPI
-from mpi_vector import KronVectorMPI
-import zlib
+import base64
 import os
 import pickle
-import base64
+import zlib
 
-from mpi_heateq import HeatEquationMPI, mem
 import numpy as np
+from mpi4py import MPI
+from mpi_heateq import HeatEquationMPI, mem
+from mpi_vector import KronVectorMPI
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

@@ -1,6 +1,6 @@
-from mpi4py import MPI
-import scipy.sparse
 import numpy as np
+import scipy.sparse
+from mpi4py import MPI
 
 
 def shared_numpy_array(array, shared_comm, dtype=np.float64):
