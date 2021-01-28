@@ -1,4 +1,3 @@
 [flake8]
 ignore = E701, W504, E125, E741, W605, W503, E731
 max-line-length=80
-exclude=C++/build/*
